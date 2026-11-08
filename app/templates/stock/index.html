@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block titulo %}Stock — Obrador Demo{% endblock %}
+{% block topbar %}Stock{% endblock %}
+
+{% block contenido %}
+<style>
+  /* ── Cabecera ── */
+  .si-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; margin-bottom:1.2rem }
+  .si-acciones { display:flex; gap:.5rem; flex-wrap:wrap }
+
+  /* ── Barra de filtros ── */
+  .si-filtros { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; margin-bottom:1.4rem }
+  .si-filtros input[type="date"] { padding:.4rem .65rem; border:1px solid #ddd; border-radius:7px; font-size:.88rem; min-height:38px }
+  .si-filtros input:focus { outline:2px solid #F5C842; border-color:#F5C842 }
+  .si-filtros select { padding:.4rem .65rem; border:1px solid #ddd; border-radius:7px; font-size:.88rem; min-height:38px }
+
+  /* ── Contenedor de la matriz ── */
+  /* inline-block + max-width:100% => la tarjeta se ajusta al ancho real de la tabla
+     (pocas tiendas = compacta, sin huecos) y se limita al viewport (muchas = scroll). */
+  .si-mx-wrap { position:relative; display:inline-block; max-width:100%; vertical-align:top;
+                border-radius:12px; box-shadow:0 2px 10px rgba(15,23,42,.08); background:#fff; overflow:hidden }
+
+  /* Botones de desplazamiento */
+  .si-mx-nav { position:absolute; top:.4rem; right:.45rem; z-index:8; display:none; gap:.35rem }
+  .si-mx-nav button {
+    width:44px; height:44px; border-radius:10px; border:none; cursor:pointer;
+    background:rgba(255,255,255,.16); color:#fff; touch-action:manipulation;
+    display:inline-flex; align-items:center; justify-content:center; transition:background .15s, transform .08s;
+  }
+  .si-mx-nav button:hover { background:rgba(255,255,255,.32) }
+  .si-mx-nav button:focus-visible { outline:3px solid #F5C842; outline-offset:2px }
+  .si-mx-nav button:active { transform:scale(.92) }
+  .si-mx-nav button svg { width:20px; height:20px }
+
+  /* Degradado que avisa de más columnas a la derecha */
+  .si-mx-fade {
+    position:absolute; top:0; right:0; bottom:0; width:46px; z-index:6; pointer-events:none;
+    background:linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,.9));
+    opacity:1; transition:opacity .2s;
+  }
+  .si-mx-wrap.at-end .si-mx-fade { opacity:0 }
+
+  .si-mx-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; scroll-behavior:smooth }
+  @media (prefers-reduced-motion: reduce) { .si-mx-scroll { scroll-behavior:auto } }
+  /* Barra de scroll horizontal siempre visible y clara */
+  .si-mx-scroll::-webkit-scrollbar { height:12px }
+  .si-mx-scroll::-webkit-scrollbar-track { background:#eef2f7; border-radius:0 0 12px 12px }
+  .si-mx-scroll::-webkit-scrollbar-thumb { background:#94a3b8; border-radius:6px; border:3px solid #eef2f7 }
+  .si-mx-scroll::-webkit-scrollbar-thumb:hover { background:#64748b }
+  .si-mx-scroll { scrollbar-width:auto; scrollbar-color:#94a3b8 #eef2f7 }
+  /* Ancho natural: la tabla NO se estira; scrollea cuando no cabe */
+  .si-mx { border-collapse:separate; border-spacing:0; width:max-content }
+  .si-mx th, .si-mx td { padding:0 }
+
+  /* Esquina (Sabor) — sticky arriba e izquierda */
+  .si-mx-corner {
+    position:sticky; top:0; left:0; z-index:7;
+    background:#1e3a5f; color:#fff; text-align:left;
+    font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    padding:.95rem 1.1rem; min-width:184px;
+    box-shadow:2px 0 5px -2px rgba(15,23,42,.25);
+  }
+  /* Cabeceras de tienda — sticky arriba */
+  .si-mx-th {
+    position:sticky; top:0; z-index:5;
+    background:#1e3a5f; color:#fff; text-align:center;
+    padding:.6rem .6rem .7rem; width:104px; min-width:104px; vertical-align:top;
+    border-left:1px solid rgba(255,255,255,.09);
+  }
+  .si-mx-th .nom { display:block; font-size:.84rem; font-weight:800; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:92px; margin:0 auto }
+  /* Nombre de tienda clicable → abre/edita su parte */
+  a.nom {
+    color:#fff; text-decoration:none; cursor:pointer;
+    padding:.2rem .1rem; border-radius:6px; transition:color .12s, background .12s;
+    border-bottom:1px dashed rgba(255,255,255,.45);
+  }
+  a.nom:hover { color:#F5C842; border-bottom-color:#F5C842 }
+  a.nom:focus-visible { outline:3px solid #F5C842; outline-offset:2px }
+  .si-mx-th .tot { display:block; font-size:.7rem; font-weight:600; color:#aebfd4; margin-top:.28rem }
+  .si-mx-th .chip {
+    display:inline-block; margin-top:.38rem; font-size:.6rem; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+    padding:.16rem .48rem; border-radius:999px; white-space:nowrap;
+  }
+  .si-mx-th .chip.cerrado   { background:#0e7d5a; color:#eafff6 }
+  .si-mx-th .chip.abierto   { background:#c47610; color:#fff7e6 }
+  .si-mx-th .chip.sin-parte { background:#3b4b63; color:#c3d0e2 }
+
+  /* Fila de sección */
+  .si-mx-seccion td {
+    background:#eef2f7; color:#5b6b80; position:sticky; left:0;
+    font-size:.66rem; font-weight:800; text-transform:uppercase; letter-spacing:.09em;
+    padding:.5rem 1.1rem;
+    box-shadow:2px 0 5px -2px rgba(15,23,42,.12);
+  }
+  .si-mx-seccion.sobrante td { background:#fdf1d8; color:#8a5a12 }
+
+  /* Celda de sabor — sticky izquierda */
+  .si-mx-sabor {
+    position:sticky; left:0; z-index:2; background:#fff; text-align:left;
+    font-size:.92rem; font-weight:600; color:#2f3e52; padding:.6rem 1.1rem;
+    white-space:nowrap; min-width:184px;
+    box-shadow:2px 0 5px -2px rgba(15,23,42,.12);
+  }
+
+  /* Zebra (incluida la columna fija) */
+  .si-mx tr.alt td { background:#f7f9fc }
+  .si-mx tr.alt .si-mx-sabor { background:#f7f9fc }
+  .si-mx tbody tr:not(.si-mx-seccion):hover td { background:#eef5ff }
+  .si-mx tbody tr:not(.si-mx-seccion):hover .si-mx-sabor { background:#eef5ff }
+
+  /* Celda de valor */
+  .si-mx-val {
+    text-align:center; font-weight:700; font-size:1rem; color:#1e3a5f;
+    padding:.6rem .55rem; border-left:1px solid #eef2f7; white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .si-mx-val.cero  { color:#c8d3e0; font-weight:500 }
+  .si-mx-val.nulo  { color:#dde4ec; font-weight:400 }
+  .si-mx-val sup   { font-size:.6rem; color:#2563eb; font-weight:700; margin-left:1px; top:-.5em }
+  .si-mx-val.aviso { background:#fde0e0; color:#b91c1c }
+  .si-mx-val.warn  { background:#fdf1d8; color:#8a5a12 }
+
+  /* Vacíos */
+  .si-empty { background:#fff; border-radius:12px; text-align:center; padding:4rem; color:#94a3b8; box-shadow:0 1px 4px rgba(0,0,0,.08) }
+</style>
+
+<!-- Cabecera -->
+<div class="si-header">
+  <h1 class="pagina-titulo" style="margin:0">Stock diario</h1>
+  <div class="si-acciones">
+    {% if usuario.puede("stock.mermas") %}
+    <a href="/stock/mermas/" class="btn">Mermas</a>
+    {% endif %}
+    <a href="/stock/envios/" class="btn">Envíos</a>
+    {% if mostrar_congeladas %}
+    <a href="/stock/congelador/nuevo" class="btn" style="background:#e0f2fe;color:#0c4a6e;border:1px solid #7dd3fc">❄ Parte congeladas</a>
+    {% endif %}
+    {% if usuario.puede("produccion") %}
+    <a href="/stock/congelado-obrador" class="btn" style="background:#e0f2fe;color:#0c4a6e;border:1px solid #7dd3fc">❄ Congelado obrador</a>
+    {% endif %}
+    {% if usuario.puede_editar("stock.partes") and usuario.rol.value != "TIENDAS" %}
+    <a href="/stock/nuevo" class="btn btn-primary">+ Nuevo parte</a>
+    {% endif %}
+    {% if usuario.rol.value == "TIENDAS" %}
+      {% if parte_hoy_id %}
+      <a href="/stock/{{ parte_hoy_id }}" class="btn" style="background:#fef3c7;border:1px solid #d97706;color:#92400e">Ver parte de hoy</a>
+      {% else %}
+      <a href="/stock/nuevo" class="btn btn-primary">+ Parte de hoy</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- Filtros -->
+<form method="get" class="si-filtros">
+  <a href="/stock/?fecha={{ ayer_iso }}" class="btn btn-sm" style="background:#eee">◀</a>
+  <input type="date" name="fecha" value="{{ fecha.isoformat() }}">
+  <a href="/stock/?fecha={{ manana_iso }}" class="btn btn-sm" style="background:#eee">▶</a>
+  {% if usuario.puede_editar("stock.partes") and usuario.rol.value != "TIENDAS" %}
+  <select name="tienda_id">
+    <option value="">Todas las tiendas</option>
+    {% for t in todas_tiendas %}
+    <option value="{{ t.id }}" {% if filtro_tienda == t.id %}selected{% endif %}>{{ t.nombre }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  <button type="submit" class="btn btn-primary btn-sm">Ver</button>
+  {% if fecha.isoformat() != hoy_iso %}
+  <a href="/stock/" class="btn btn-sm">Hoy</a>
+  {% endif %}
+  <span style="font-size:.82rem;color:#94a3b8;margin-left:.25rem">{{ fecha | fecha_es('%A %d/%m/%Y') | capitalize }}</span>
+</form>
+
+{% if not tiendas %}
+<div class="si-empty">
+  <strong style="color:#475569;font-size:1rem;display:block">Sin tiendas activas</strong>
+</div>
+{% else %}
+
+{# ¿Hay algún sobrante reportado? (sobrantes_por_tienda: {tid: {producto: cantidad}}) #}
+{% set hay_sobrante = namespace(v=false) %}
+{% set sob_productos = [] %}
+{% for tid_s, sob in sobrantes_por_tienda.items() %}
+  {% if sob %}{% set hay_sobrante.v = true %}{% endif %}
+  {% for nombre in sob %}{% if nombre not in sob_productos %}{% set _ = sob_productos.append(nombre) %}{% endif %}{% endfor %}
+{% endfor %}
+
+{% if not secciones and not hay_sobrante.v %}
+<div class="si-empty">
+  <strong style="color:#475569;font-size:1rem;display:block">Sin partes para esta fecha</strong>
+  <span style="font-size:.85rem">Ninguna tienda ha reportado stock.</span>
+</div>
+{% else %}
+
+{% if usuario.puede_editar("stock.partes") %}
+<p style="margin:0 0 .7rem;font-size:.8rem;color:#94a3b8">💡 Toca el nombre de una tienda para abrir o editar su parte.</p>
+{% endif %}
+
+<div class="si-mx-wrap" id="mxWrap">
+  <div class="si-mx-nav" id="mxNav">
+    <button type="button" id="mxPrev" aria-label="Desplazar a la izquierda">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
+    <button type="button" id="mxNext" aria-label="Desplazar a la derecha">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+  </div>
+  <div class="si-mx-fade"></div>
+
+  <div class="si-mx-scroll" id="mxScroll">
+    <table class="si-mx">
+      <thead>
+        <tr>
+          <th class="si-mx-corner" scope="col">Sabor</th>
+          {% set puede_ed = usuario.puede_editar("stock.partes") %}
+          {% for t in tiendas %}
+          {% set tid_s = t.id|string %}
+          <th class="si-mx-th" scope="col">
+            {% if t.parte_id %}
+              {% if puede_ed and not t.cerrado %}
+                <a class="nom" href="/stock/{{ t.parte_id }}/editar" title="Editar parte de {{ t.nombre }}">{{ t.nombre }}</a>
+              {% else %}
+                <a class="nom" href="/stock/{{ t.parte_id }}" title="Abrir parte de {{ t.nombre }}">{{ t.nombre }}</a>
+              {% endif %}
+              <span class="tot">{{ total_por_tienda.get(tid_s, 0) }} tartas</span>
+              {% if t.cerrado %}<span class="chip cerrado">Cerrado</span>
+              {% else %}<span class="chip abierto">Abierto</span>{% endif %}
+            {% elif puede_ed %}
+              <a class="nom" href="/stock/nuevo?tienda_id={{ t.id }}" title="Crear parte de {{ t.nombre }}">{{ t.nombre }}</a>
+              <span class="chip sin-parte">Sin parte</span>
+            {% else %}
+              <span class="nom" title="{{ t.nombre }}">{{ t.nombre }}</span>
+              <span class="chip sin-parte">Sin parte</span>
+            {% endif %}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% set fila_n = namespace(v=0) %}
+        {# ── Secciones de sabores ── #}
+        {% for sec in secciones %}
+        <tr class="si-mx-seccion"><td colspan="{{ tiendas|length + 1 }}">{{ sec.label }}</td></tr>
+        {% for fila in sec.filas %}
+        {% set fila_n.v = fila_n.v + 1 %}
+        <tr class="{{ 'alt' if fila_n.v is odd }}">
+          <th class="si-mx-sabor" scope="row">{{ fila.etiqueta }}</th>
+          {% for t in tiendas %}
+          {% set tid_s = t.id|string %}
+          {% if t.parte_id and tid_s in celdas %}
+            {% set v = celdas[tid_s].get(fila.key) %}
+            {% if v and (v[0] > 0 or v[1] > 0) %}
+            <td class="si-mx-val">{{ v[0] }}{% if fila.permite_porciones and v[1] > 0 %}<sup>+{{ v[1] }}p</sup>{% endif %}</td>
+            {% else %}
+            <td class="si-mx-val cero">0</td>
+            {% endif %}
+          {% else %}
+            <td class="si-mx-val nulo">·</td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+
+        {# ── Sobrante (agregado por producto, sin sabor) ── #}
+        {% if hay_sobrante.v %}
+        <tr class="si-mx-seccion sobrante"><td colspan="{{ tiendas|length + 1 }}">Sobrante (sin sabor)</td></tr>
+        {% for nombre_prod in sob_productos %}
+        {% set fila_n.v = fila_n.v + 1 %}
+        <tr class="{{ 'alt' if fila_n.v is odd }}">
+          <th class="si-mx-sabor" scope="row">{{ nombre_prod }}</th>
+          {% for t in tiendas %}
+          {% set tid_s = t.id|string %}
+          {% set sob = sobrantes_por_tienda.get(tid_s) %}
+          {% if t.parte_id and sob is not none %}
+            {% set val = sob.get(nombre_prod, 0) %}
+            {% if val > 5 %}
+            <td class="si-mx-val aviso">{{ val }} ⚠</td>
+            {% elif val > 0 %}
+            <td class="si-mx-val warn">{{ val }}</td>
+            {% else %}
+            <td class="si-mx-val cero">0</td>
+            {% endif %}
+          {% else %}
+            <td class="si-mx-val nulo">·</td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const wrap = document.getElementById('mxWrap');
+    const scroll = document.getElementById('mxScroll');
+    const nav = document.getElementById('mxNav');
+    if (!wrap || !scroll) return;
+
+    function update() {
+      const max = scroll.scrollWidth - scroll.clientWidth;
+      const scrollable = max > 4;
+      nav.style.display = scrollable ? 'flex' : 'none';
+      wrap.classList.toggle('at-end', !scrollable || scroll.scrollLeft >= max - 2);
+    }
+    function step() { return Math.max(180, scroll.clientWidth * 0.6); }
+
+    document.getElementById('mxPrev').addEventListener('click', () => scroll.scrollBy({ left: -step() }));
+    document.getElementById('mxNext').addEventListener('click', () => scroll.scrollBy({ left: step() }));
+    scroll.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+</script>
+
+{% endif %}
+{% endif %}
+{% endblock %}

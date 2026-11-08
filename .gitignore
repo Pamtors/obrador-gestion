@@ -1,0 +1,38 @@
+# Secretos y entorno
+.env
+.env.*
+!.env.example
+
+# Entorno virtual
+venv/
+
+# Base de datos local y backups
+*.db
+*.db-wal
+*.db-shm
+backups/
+
+# Logs
+logs/
+*.log
+docs/uvicorn*.txt
+docs/uvicorn.err
+
+# Artefactos de exportacion
+docs/mejoras/_export.html
+
+# Python
+__pycache__/
+*.pyc
+
+# Otros entornos / herramientas
+.venv/
+env/
+*.sqlite
+*.sqlite3
+*.egg-info/
+dist/
+build/
+.vscode/
+.idea/
+.DS_Store

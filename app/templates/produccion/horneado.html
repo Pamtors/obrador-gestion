@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Horneado — Obrador Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
+    :root {
+      --azul: #1e3a5f;
+      --azul-claro: #eff6ff;
+      --verde: #15803d;
+      --verde-claro: #dcfce7;
+      --amarillo: #F5C842;
+      --naranja: #d97706;
+      --gris: #f8fafc;
+      --borde: #e2e8f0;
+      --texto: #1e293b;
+      --muted: #64748b;
+    }
+    body { font-family:system-ui, sans-serif; background:#f4f4f4; color:var(--texto); font-size:14px }
+
+    /* ── Barra de controles ── */
+    .controles {
+      position:sticky; top:0; z-index:50;
+      background:#fff; border-bottom:1px solid var(--borde);
+      padding:.6rem 1rem; display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+    }
+    .controles .titulo { font-weight:800; font-size:.95rem; color:var(--azul); margin-right:.3rem }
+    .btn { display:inline-flex; align-items:center; gap:.35rem; padding:.45rem .9rem; border:none; border-radius:7px; font-size:.84rem; font-weight:600; cursor:pointer; text-decoration:none; min-height:38px }
+    .btn-azul   { background:var(--azul); color:#fff }
+    .btn-azul:hover { background:#162d4a }
+    .btn-verde  { background:var(--verde); color:#fff }
+    .btn-verde:hover { background:#166534 }
+    .btn-gris   { background:#eee; color:#333; border:1px solid #ddd }
+    .btn-gris:hover { background:#e0e0e0 }
+    .btn-amarillo { background:var(--amarillo); color:#2c2c2c }
+    .btn-amarillo:hover { background:#d4a800 }
+    .filtros    { display:flex; gap:.4rem; align-items:center }
+    .filtros input[type="date"] { padding:.4rem .6rem; border:1px solid #ddd; border-radius:6px; font-size:.84rem; min-height:38px }
+    .filtros input:focus { outline:2px solid var(--amarillo); border-color:var(--amarillo) }
+    .estado-chip {
+      padding:.3rem .75rem; border-radius:999px; font-size:.78rem; font-weight:700;
+      margin-left:auto;
+    }
+    .estado-chip.pendiente { background:#fef3c7; color:#92400e }
+    .estado-chip.confirmado { background:var(--verde-claro); color:var(--verde) }
+
+    /* ── Contenido ── */
+    .contenido { padding:1rem; max-width:900px; margin:0 auto }
+
+    /* ── Cabecera de fecha ── */
+    .dia-titulo {
+      font-size:1.1rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em;
+      color:var(--azul); border-bottom:3px solid var(--azul);
+      padding-bottom:.5rem; margin-bottom:1.2rem;
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem
+    }
+    .dia-totales { display:flex; gap:.75rem; font-size:.85rem; font-weight:600 }
+    .dia-totales span { padding:.2rem .6rem; border-radius:6px; background:var(--gris); border:1px solid var(--borde) }
+    .dia-totales .t-conf { background:var(--verde-claro); color:var(--verde); border-color:#bbf7d0 }
+    .dia-totales .t-ped  { background:#fef3c7; color:#92400e; border-color:#fcd34d }
+
+    /* Columna de pedidos: compromiso con cliente, siempre se hornea */
+    .cant-ped { text-align:center; font-size:.88rem; font-weight:800; color:#b45309 }
+    .cant-ped.cero { color:#cbd5e1; font-weight:400 }
+    .num-input.bajo-pedido { border-color:#dc2626; color:#dc2626; box-shadow:0 0 0 3px rgba(220,38,38,.15) }
+    .aviso-pedidos { font-size:.72rem; color:#dc2626; font-weight:700; display:none; margin-top:.2rem }
+
+    /* ── Sección por tamaño ── */
+    .seccion { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); overflow:hidden; margin-bottom:1rem }
+    .sec-head {
+      padding:.6rem 1rem; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#fff;
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .sec-head.grande  { background:#1e3a5f }
+    .sec-head.pequena { background:#2d6a4f }
+    .sec-head.mini    { background:#4a1942 }
+    .sec-head.tarrina { background:#7c3d12 }
+    .sec-head.cookie  { background:#1a4068 }
+    .sec-head.otro    { background:#475569 }
+    .sec-total { font-size:.85rem; font-weight:800; background:rgba(255,255,255,.2); padding:.15rem .5rem; border-radius:5px }
+
+    /* ── Tabla ── */
+    table { width:100%; border-collapse:collapse }
+    thead th {
+      padding:.5rem .8rem; background:var(--gris); border-bottom:1px solid var(--borde);
+      font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted);
+      text-align:center;
+    }
+    thead th:first-child { text-align:left; padding-left:1rem }
+    tbody tr { border-bottom:1px solid #f1f5f9 }
+    tbody tr:last-child { border-bottom:none }
+    tbody tr:hover { background:#fafcff }
+    tbody td { padding:.55rem .8rem; vertical-align:middle }
+    tbody td:first-child { padding-left:1rem }
+
+    .sabor-nombre { font-weight:600; color:var(--texto); font-size:.9rem }
+    .sabor-base   { font-size:.75rem; color:var(--muted); font-weight:400; margin-left:.3rem }
+
+    /* Cantidades */
+    .cant-prop { text-align:center; font-size:.88rem; color:var(--muted) }
+    .cant-conf { text-align:center }
+
+    /* Input táctil grande para cocina */
+    .num-input {
+      width:80px; height:48px;
+      border:2px solid var(--borde); border-radius:8px;
+      text-align:center; font-size:1.2rem; font-weight:700; color:var(--texto);
+      background:#fff; transition:border-color .15s, box-shadow .15s;
+    }
+    .num-input:focus { outline:none; border-color:var(--amarillo); box-shadow:0 0 0 3px rgba(245,200,66,.25) }
+    .num-input.cambiado { border-color:var(--naranja); color:var(--naranja) }
+    .num-input.igual    { border-color:#bbf7d0; color:var(--verde) }
+
+    /* Indicador de estado por fila */
+    .fila-ok  { background:#f0fdf4 }
+    .fila-mod { background:#fffbeb }
+
+    /* ── Save flotante ── */
+    .save-bar {
+      position:fixed; bottom:1rem; right:1rem; left:1rem;
+      background:#fff; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,.15);
+      padding:.75rem 1.2rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+      max-width:600px; margin:0 auto;
+      border:2px solid var(--verde);
+    }
+    .save-msg { font-size:.88rem; color:var(--verde); font-weight:600 }
+
+    /* ── Empty state ── */
+    .vacio { text-align:center; padding:4rem 1rem; color:var(--muted) }
+    .vacio p { margin-top:.4rem; font-size:.9rem }
+
+    /* ── Móvil ── */
+    @media (max-width: 900px) {
+      /* Por debajo de 16px Safari iOS hace auto-zoom al enfocar y ya no vuelve */
+      input, select, textarea { font-size:16px }
+      .filtros input[type="date"] { font-size:16px; min-height:44px }
+      .btn { min-height:44px }
+      .contenido { padding:.8rem }
+    }
+
+    /* ── Print ── */
+    @media print {
+      .controles, .save-bar { display:none !important }
+      .num-input { border:none; background:transparent; font-size:1.1rem; height:auto; width:auto; font-weight:800 }
+      .seccion { box-shadow:none; border:1px solid #ddd; border-radius:0 }
+      body { background:#fff }
+      .contenido { padding:0; max-width:100% }
+    }
+    @page { size:A4 portrait; margin:12mm }
+  </style>
+</head>
+<body>
+
+<!-- Barra de controles -->
+<div class="controles">
+  <span class="titulo">Horneado</span>
+  <a href="/" class="btn btn-gris">← Inicio</a>
+  <a href="/horneado/?fecha={{ hoy_iso }}" class="btn btn-gris">Hoy</a>
+  <a href="/horneado/?fecha={{ manana_iso }}" class="btn btn-gris">Mañana</a>
+  <div class="filtros">
+    <form method="get" action="/horneado/" style="display:flex;gap:.4rem">
+      <input type="date" name="fecha" value="{{ fecha.isoformat() }}">
+      <button type="submit" class="btn btn-azul">Ver</button>
+    </form>
+  </div>
+  <button class="btn btn-gris" onclick="window.print()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    Imprimir
+  </button>
+  <a href="/horneado/congeladas?fecha={{ fecha.isoformat() }}" class="btn" style="margin-left:auto;background:#e0f2fe;color:#0c4a6e;border:1px solid #7dd3fc">❄ Congeladas</a>
+  <a href="/stock/envios/?fecha={{ fecha.isoformat() }}" class="btn btn-azul">
+    Ver envíos →
+  </a>
+  {% if hay_confirmacion %}
+  <span class="estado-chip confirmado">✓ Producción confirmada</span>
+  {% else %}
+  <span class="estado-chip pendiente">Pendiente de confirmar</span>
+  {% endif %}
+</div>
+
+<div class="contenido">
+
+  <!-- Cabecera del día -->
+  <div class="dia-titulo">
+    <span>{{ fecha | fecha_es('%A %d de %B de %Y') | upper }}</span>
+    <div class="dia-totales">
+      <span class="t-ped">Pedidos: <strong>{{ total_pedidos }}</strong></span>
+      <span>Stock: <strong>{{ total_reposicion }}</strong></span>
+      <span>Propuesto: <strong>{{ total_propuesto }}</strong></span>
+      {% if hay_confirmacion %}
+      <span class="t-conf">Confirmado: <strong>{{ total_confirmado }}</strong></span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if avisos_sobrante %}
+  <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid var(--naranja);border-radius:8px;padding:.75rem 1rem;margin-bottom:1.2rem">
+    <div style="font-weight:800;color:#92400e;font-size:.85rem;display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Sobrantes altos — revisar antes de hornear
+    </div>
+    <ul style="margin:0;padding-left:1.2rem;font-size:.85rem;color:#78350f">
+      {% for a in avisos_sobrante %}
+      <li><strong>{{ a.tienda }}</strong>: {{ a.cantidad }} sobrantes de {{ a.tipo }}. Considera reducir la lista.</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if not filas_por_producto %}
+  <div class="vacio">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+    <strong style="display:block;color:#475569;font-size:1rem;margin-top:.6rem">Sin producción para el {{ fecha.strftime('%d/%m/%Y') }}</strong>
+    <p>No hay pedidos ni necesidades de tiendas para este día.</p>
+  </div>
+  {% else %}
+
+  <form method="post" action="/horneado/?fecha={{ fecha.isoformat() }}" id="form-horneado">
+
+    {% for prod_nombre, sec in filas_por_producto.items() %}
+
+    {% if "grande" in prod_nombre|lower %}{% set cls = "grande" %}
+    {% elif "peque" in prod_nombre|lower %}{% set cls = "pequena" %}
+    {% elif "mini" in prod_nombre|lower %}{% set cls = "mini" %}
+    {% elif "tarrin" in prod_nombre|lower %}{% set cls = "tarrina" %}
+    {% elif "cookie" in prod_nombre|lower or "galleta" in prod_nombre|lower %}{% set cls = "cookie" %}
+    {% else %}{% set cls = "otro" %}{% endif %}
+
+    {% set total_sec = namespace(prop=0, conf=0, ped=0) %}
+    {% for f in sec.filas %}
+      {% set total_sec.prop = total_sec.prop + f.propuesta %}
+      {% set total_sec.ped = total_sec.ped + f.pedidos %}
+      {% if f.confirmada is not none %}{% set total_sec.conf = total_sec.conf + f.confirmada %}{% endif %}
+    {% endfor %}
+
+    <div class="seccion">
+      <div class="sec-head {{ cls }}">
+        <span>{{ prod_nombre }}</span>
+        <span class="sec-total">
+          {{ total_sec.prop }} propuestas
+          {% if total_sec.ped > 0 %} · {{ total_sec.ped }} de pedidos{% endif %}
+          {% if total_sec.conf > 0 %} · {{ total_sec.conf }} confirmadas{% endif %}
+        </span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40%">Sabor / Base</th>
+            <th style="width:15%">Pedidos</th>
+            <th style="width:15%">Stock</th>
+            <th style="width:15%">Propuesto</th>
+            <th style="width:15%">A hornear</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in sec.filas %}
+          {% set es_diferente = f.confirmada is not none and f.confirmada != f.propuesta %}
+          <tr class="{% if f.confirmada is not none %}{% if es_diferente %}fila-mod{% else %}fila-ok{% endif %}{% endif %}"
+              data-prop="{{ f.propuesta }}" data-ped="{{ f.pedidos }}">
+            <td>
+              <span class="sabor-nombre">{{ f.sabor_nombre }}</span>
+              {% if f.sabor_real != f.sabor_nombre %}
+              <span class="sabor-base">({{ f.sabor_real }})</span>
+              {% endif %}
+            </td>
+            <td class="cant-ped {% if f.pedidos == 0 %}cero{% endif %}">{{ f.pedidos if f.pedidos > 0 else "—" }}</td>
+            <td class="cant-prop">{{ f.reposicion if f.reposicion > 0 else "—" }}</td>
+            <td class="cant-prop">{{ f.propuesta }}</td>
+            <td class="cant-conf">
+              <input
+                class="num-input{% if f.confirmada is not none %}{% if es_diferente %} cambiado{% else %} igual{% endif %}{% endif %}"
+                type="number" min="0" max="999"
+                name="cant_{{ f.prod_id }}_{{ f.sabor_id }}"
+                value="{{ f.confirmada if f.confirmada is not none else f.propuesta }}"
+                oninput="marcarCambio(this)">
+              <div class="aviso-pedidos">¡Menos que los pedidos ({{ f.pedidos }})!</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% endfor %}
+
+    <!-- Save bar flotante -->
+    <div class="save-bar">
+      <span class="save-msg">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        Los cambios aquí actualizan los envíos a tiendas
+      </span>
+      <button type="submit" class="btn btn-verde" style="min-height:44px;padding:.5rem 1.5rem;font-size:.95rem">
+        Confirmar producción
+      </button>
+    </div>
+
+  </form>
+  {% endif %}
+
+</div>
+
+<script>
+  function marcarCambio(input) {
+    const tr   = input.closest('tr');
+    const prop = parseInt(tr.dataset.prop, 10);
+    const ped  = parseInt(tr.dataset.ped, 10) || 0;
+    const val  = parseInt(input.value, 10) || 0;
+    // Nunca hornear menos que los pedidos comprometidos: aviso en rojo
+    const bajoPedido = val < ped;
+    input.classList.toggle('bajo-pedido', bajoPedido);
+    input.classList.toggle('cambiado', !bajoPedido && val !== prop);
+    input.classList.toggle('igual',    !bajoPedido && val === prop);
+    const aviso = tr.querySelector('.aviso-pedidos');
+    if (aviso) aviso.style.display = bajoPedido ? 'block' : 'none';
+  }
+</script>
+
+</body>
+</html>

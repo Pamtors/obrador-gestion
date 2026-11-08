@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titulo %}Historial albaranes — {{ tienda.nombre }}{% endblock %}
+{% block topbar %}Franquicias{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Historial de albaranes — {{ tienda.nombre }}</h1>
+  {% if usuario.rol.value != "TIENDAS" %}
+  <a href="/franquicias/albaranes" class="btn" style="background:#eee">← Volver</a>
+  {% endif %}
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr><th>Fecha</th><th>Número</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for f in filas %}
+      <tr>
+        <td>{{ f.fecha.strftime('%d/%m/%Y') }}</td>
+        <td><code>{{ f.numero }}</code></td>
+        <td>
+          {% if f.estado == 'en_holded' %}
+            <span style="font-size:.8rem;color:#166534;font-weight:600">✓ En Holded</span>
+          {% else %}
+            <span style="font-size:.8rem;color:#1e40af;font-weight:600">Generado (local)</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right">
+          <a href="/franquicias/albaranes/{{ f.id }}/imprimir" target="_blank" class="btn btn-sm"
+             style="font-size:.8rem;padding:3px 10px;background:#eee">Imprimir</a>
+          {% if usuario.rol.value in ("JEFES", "ADMINISTRACION") %}
+          <a href="/franquicias/albaranes/{{ f.id }}/editar" class="btn btn-sm"
+             style="font-size:.8rem;padding:3px 10px;background:#eee">Editar</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="4" style="text-align:center;color:#aaa;padding:2rem">
+          No hay albaranes registrados para esta franquicia.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

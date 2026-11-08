@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block titulo %}Holded — Configuración{% endblock %}
+{% block topbar %}Holded{% endblock %}
+
+{% block contenido %}
+<h1 class="pagina-titulo">Configuración de Holded</h1>
+
+{% if guardado_ok %}
+<div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:.75rem 1rem;border-radius:6px;margin-bottom:1.2rem">
+  ✅ Token guardado correctamente.
+</div>
+{% endif %}
+
+<div class="card" style="max-width:560px">
+  <h3 style="margin-top:0;font-size:1rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+    Token de API
+  </h3>
+
+  {% if api_key_configurada %}
+  <p style="margin-bottom:1rem;color:#444">
+    Token actual: <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:.9rem">{{ api_key_masked }}</code>
+  </p>
+  {% endif %}
+
+  <form method="post" action="/holded/config">
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <input
+        type="password"
+        name="api_key"
+        placeholder="pat_… o clave clásica hex"
+        maxlength="128"
+        style="flex:1;min-width:260px;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:6px;font-family:monospace;font-size:.95rem"
+        autocomplete="off"
+      >
+      <button class="btn btn-primary" type="submit">Guardar</button>
+    </div>
+  </form>
+</div>
+
+{# ── Instrucciones según versión ───────────────────────────────────────────── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:720px;margin-top:1.2rem">
+
+  <div class="card" style="border:2px solid #86efac">
+    <div style="font-weight:700;color:#166534;margin-bottom:.5rem">✅ API v2 — Recomendada</div>
+    <p style="font-size:.85rem;color:#555;margin:.3rem 0">
+      Token que empieza por <code>pat_…</code><br>
+      Futuro de la API de Holded.
+    </p>
+    <ol style="font-size:.83rem;color:#444;padding-left:1.2rem;margin:.6rem 0 0">
+      <li>Holded → Ajustes → <strong>API</strong></li>
+      <li>Crear nuevo token</li>
+      <li>Activar estos permisos:
+        <ul style="margin:.3rem 0;padding-left:1rem">
+          <li><code>contacts</code> → Lectura</li>
+          <li><code>sales / invoices</code> → Escritura</li>
+          <li><code>sales / albaranes</code> → Escritura</li>
+        </ul>
+      </li>
+      <li>Copiar el token y pegarlo aquí</li>
+    </ol>
+  </div>
+
+  <div class="card" style="border:2px solid #d1d5db">
+    <div style="font-weight:700;color:#555;margin-bottom:.5rem">API v1 — Compatible actual</div>
+    <p style="font-size:.85rem;color:#555;margin:.3rem 0">
+      Clave de 32 caracteres hex (sin <code>pat_</code>)<br>
+      Funciona hoy pero Holded la irá deprecando.
+    </p>
+    <ol style="font-size:.83rem;color:#444;padding-left:1.2rem;margin:.6rem 0 0">
+      <li>Holded → Ajustes → <strong>Integraciones → API</strong></li>
+      <li>Copiar la clave clásica de 32 chars</li>
+      <li>Pegar aquí</li>
+    </ol>
+  </div>
+
+</div>
+
+<div style="margin-top:1.2rem">
+  <a href="/holded/" class="btn" style="background:#eee">← Documentos</a>
+</div>
+{% endblock %}

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ titulo }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #fff; }
+
+    /* ── PANTALLA ─────────────────────────────────────────── */
+    .controls {
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      background: #f8f8f8;
+      border-bottom: 1px solid #ddd;
+    }
+    .btn-print {
+      padding: 7px 16px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .btn-back {
+      padding: 7px 12px;
+      background: #eee;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      text-decoration: none;
+      color: #333;
+      font-size: 13px;
+    }
+    .info { color: #888; font-size: 12px; }
+
+    /* ── GRID A4: 2 cols × 4 filas ───────────────────────── */
+    /*
+      A4 = 210mm × 297mm
+      Cada etiqueta: 105mm × 74.25mm
+      Sin márgenes ni gaps → encajan exactamente 8 por página
+    */
+    .pagina {
+      width: 210mm;
+      margin: 0 auto;
+    }
+
+    .etiqueta {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      width: 105mm;
+      height: 74.25mm;
+      float: left;
+      overflow: hidden;
+      border: 0.4pt dashed #aaa;   /* línea de corte, imprime muy suave */
+    }
+
+    /* fuerza salto de página cada 8 etiquetas */
+    .etiqueta:nth-child(8n+1) { clear: left; }
+
+    .etiqueta-datos {
+      display: grid;
+      grid-template-columns: 1fr 32mm;
+      border-bottom: 0.5pt solid #555;
+    }
+
+    .etiqueta-izq {
+      padding: 3px 5px;
+      border-right: 0.5pt solid #555;
+    }
+
+    .dato-fila {
+      display: flex;
+      gap: 3px;
+      margin-bottom: 1.5px;
+      line-height: 1.35;
+    }
+
+    .dato-label {
+      color: #555;
+      white-space: nowrap;
+      min-width: 58px;
+      font-size: 7.5pt;
+    }
+
+    .dato-valor {
+      font-weight: 700;
+      font-size: 8pt;
+    }
+
+    .etiqueta-der {
+      padding: 3px 4px;
+    }
+
+    .reg-label {
+      font-size: 6.5pt;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+      line-height: 1.3;
+    }
+
+    .reg-valor {
+      font-weight: 700;
+      font-size: 7.5pt;
+      margin-top: 2px;
+    }
+
+    .etiqueta-centro {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4px 6px;
+      gap: 3px;
+    }
+
+    .nombre-cliente {
+      font-size: 11pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      line-height: 1.2;
+    }
+
+    .nombre-sabor {
+      font-size: 10pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    /* ── PRINT ────────────────────────────────────────────── */
+    @media print {
+      .controls { display: none; }
+      body { margin: 0; }
+      .pagina { margin: 0; }
+      .etiqueta {
+        border-color: #ccc;   /* línea de corte visible pero discreta */
+      }
+      /* forzar salto de página A4 */
+      .etiqueta:nth-child(8n) {
+        page-break-after: always;
+      }
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="controls">
+  <button class="btn-print" onclick="window.print()">🖨 Imprimir (Ctrl+P)</button>
+  <a href="{{ volver_url }}" class="btn-back">← Volver</a>
+  <span class="info">{{ titulo }} &nbsp;·&nbsp; {{ etiquetas|length }} etiqueta{{ 's' if etiquetas|length != 1 else '' }}</span>
+</div>
+
+<div class="pagina">
+  {% for e in etiquetas %}
+  <div class="etiqueta">
+    <div class="etiqueta-datos">
+      <div class="etiqueta-izq">
+        <div class="dato-fila">
+          <span class="dato-label">CÓDIGO</span>
+          <span class="dato-valor">{{ e.codigo }}</span>
+        </div>
+        <div class="dato-fila">
+          <span class="dato-label">FECHA ENT.</span>
+          <span class="dato-valor">{{ e.fecha_entrega.strftime('%d/%m/%Y') if e.fecha_entrega else '—' }}</span>
+        </div>
+        <div class="dato-fila">
+          <span class="dato-label">FECHA HORN.</span>
+          <span class="dato-valor">{{ e.fecha_horneado.strftime('%d/%m/%Y') if e.fecha_horneado else '—' }}</span>
+        </div>
+        <div class="dato-fila">
+          <span class="dato-label">FECHA CAD.</span>
+          <span class="dato-valor">{{ e.fecha_caducidad.strftime('%d/%m/%Y') if e.fecha_caducidad else '—' }}</span>
+        </div>
+        <div class="dato-fila">
+          <span class="dato-label">FORMATO</span>
+          <span class="dato-valor">{{ e.formato }}</span>
+        </div>
+      </div>
+      <div class="etiqueta-der">
+        <div class="reg-label">REGISTRO<br>SANITARIO<br>Nº ASIGNADO:</div>
+        <div class="reg-valor">{{ e.registro_sanitario or '—' }}</div>
+      </div>
+    </div>
+
+    <div class="etiqueta-centro">
+      <div class="nombre-cliente">{{ e.nombre_cliente }}</div>
+      <div class="nombre-sabor">{{ e.sabor }}</div>
+    </div>
+  </div>
+  {% else %}
+  <p style="padding:2rem;color:#888">No hay etiquetas para generar.</p>
+  {% endfor %}
+</div>
+
+</body>
+</html>

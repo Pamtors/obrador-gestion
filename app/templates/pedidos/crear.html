@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+{% block titulo %}{% if editar %}Editar pedido #{{ pedido.id }}{% else %}Nuevo pedido{% endif %} — Obrador Demo{% endblock %}
+{% block topbar %}Pedidos{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">{% if editar %}Editar pedido #{{ pedido.id }}{% else %}Nuevo pedido{% endif %}</h1>
+</div>
+
+<form method="post" action="{% if editar %}/pedidos/{{ pedido.id }}/editar{% else %}/pedidos/crear{% endif %}">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+
+    <!-- Tipo -->
+    <div class="card" style="grid-column:1/-1;display:flex;gap:1rem;align-items:center;padding:1rem 1.2rem">
+      <label style="font-weight:600;white-space:nowrap">Tipo de pedido:</label>
+      {% for t in ["PARTICULAR", "B2B", "TIENDA"] %}
+      <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+        <input type="radio" name="tipo" value="{{ t }}" onchange="actualizarTipo(this.value)"
+          {% if editar and pedido.tipo == t %}checked{% elif not editar and t == "PARTICULAR" %}checked{% endif %}>
+        {{ t }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <!-- Datos particular -->
+    <div class="card" id="bloque-particular" style="padding:1rem 1.2rem">
+      <h4 style="margin:0 0 .8rem;color:#555">Datos del cliente</h4>
+      <div class="form-group">
+        <label>Nombre del cliente</label>
+        <input type="text" name="nombre_cliente" value="{{ pedido.nombre_cliente if editar and pedido.nombre_cliente else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Teléfono</label>
+        <input type="text" name="telefono_cliente" value="{{ pedido.telefono_cliente if editar and pedido.telefono_cliente else '' }}">
+      </div>
+    </div>
+
+    <!-- Aviso precio tienda -->
+    <div class="card" id="bloque-tienda" style="padding:1rem 1.2rem;display:none;border-left:4px solid #6366f1">
+      <h4 style="margin:0 0 .5rem;color:#4338ca">Pedido interno de tienda</h4>
+      <p id="aviso-precio-tienda" style="margin:0;font-size:.9rem;color:#555"></p>
+    </div>
+
+    <!-- Datos B2B -->
+    <div class="card" id="bloque-b2b" style="padding:1rem 1.2rem;display:none">
+      <h4 style="margin:0 0 .8rem;color:#555">Cliente B2B</h4>
+      <div class="form-group">
+        <label>Cliente B2B</label>
+        <div id="combo-b2b" style="position:relative">
+          <input type="hidden" name="cliente_b2b_id" id="b2b-id"
+                 value="{{ pedido.cliente_b2b_id if editar and pedido.cliente_b2b_id else '' }}">
+          <input type="text" id="b2b-buscar" autocomplete="off"
+                 placeholder="Escribe para buscar restaurante…"
+                 oninput="filtrarB2B()" onfocus="abrirB2B()"
+                 style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:6px">
+          <ul id="b2b-lista" style="display:none;position:absolute;z-index:30;left:0;right:0;max-height:240px;overflow:auto;margin:2px 0 0;padding:0;list-style:none;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 6px 16px rgba(0,0,0,.12)"></ul>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:.8rem">
+        <label style="font-weight:600">Punto de entrega</label>
+        <div style="display:flex;gap:1.2rem;margin-top:.5rem">
+          {% set ub = pedido.ubicacion_entrega if editar and pedido.ubicacion_entrega else 'TIENDA' %}
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+            <input type="radio" name="ubicacion_entrega" value="TIENDA" onchange="actualizarUbicacionB2B('TIENDA')"
+              {% if ub == 'TIENDA' %}checked{% endif %}> Tienda
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+            <input type="radio" name="ubicacion_entrega" value="RESTAURANTE" onchange="actualizarUbicacionB2B('RESTAURANTE')"
+              {% if ub == 'RESTAURANTE' %}checked{% endif %}> Restaurante
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fechas y tienda -->
+    <div class="card" style="padding:1rem 1.2rem">
+      <h4 style="margin:0 0 .8rem;color:#555">Fechas y tienda</h4>
+      <div class="form-group">
+        <label>Fecha de recogida *</label>
+        <input type="date" name="fecha_recogida" required
+          value="{{ pedido.fecha_recogida.isoformat() if editar and pedido.fecha_recogida else '' }}">
+      </div>
+      <div class="form-group">
+        <label style="color:#888">Fecha de horneado</label>
+        <input type="date" disabled style="background:#f5f5f5;color:#aaa;cursor:not-allowed"
+          value="{{ pedido.fecha_horneado.isoformat() if editar and pedido.fecha_horneado else '' }}"
+          placeholder="Auto: recogida − 1 día">
+        <small style="color:#aaa">Calculada automáticamente (recogida − 1 día)</small>
+      </div>
+      <div class="form-group" id="grupo-tienda">
+        <label>Tienda de recogida *</label>
+        <select name="tienda_id" id="sel-tienda" required>
+          <option value="">— Seleccionar —</option>
+          {% for t in tiendas %}
+          <option value="{{ t.id }}" {% if editar and pedido.tienda_id == t.id %}selected{% endif %}>{{ t.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Comentario del pedido</label>
+        <textarea name="comentario" rows="2" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:6px">{{ pedido.comentario if editar and pedido.comentario else '' }}</textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Líneas -->
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1rem">
+    <div style="padding:.8rem 1.2rem;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+      <h3 style="margin:0;font-size:1rem">Líneas del pedido</h3>
+      <button type="button" class="btn btn-primary btn-sm" onclick="añadirLinea()">+ Añadir línea</button>
+    </div>
+    <table id="tabla-lineas" style="width:100%">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Sabor</th>
+          <th style="width:70px">Cant.</th>
+          <th>Comentario</th>
+          <th style="width:50px"></th>
+        </tr>
+      </thead>
+      <tbody id="lineas-body">
+        {% if editar and lineas %}
+          {% for l in lineas %}
+          <tr class="linea-row">
+            <td>
+              <select name="producto_id" class="sel-producto" onchange="actualizarSabores(this)" style="width:100%">
+                <option value="">— Producto —</option>
+                {% for p in productos %}
+                <option value="{{ p.id }}" {% if p.id == l.producto_id %}selected{% endif %}>{{ p.nombre }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td>
+              <select name="sabor_id" class="sel-sabor" style="width:100%">
+                <option value="{{ l.sabor_id }}" selected>cargando...</option>
+              </select>
+            </td>
+            <td><input type="number" name="cantidad" value="{{ l.cantidad }}" min="1" style="width:60px;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+            <td><input type="text" name="comentario_linea" value="{{ l.comentario or '' }}" placeholder="opcional" style="width:100%;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+            <td><button type="button" onclick="this.closest('tr').remove()" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:1.1rem">✕</button></td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <!-- fila vacía inicial; required se gestiona por JS según tipo -->
+          <tr class="linea-row">
+            <td>
+              <select name="producto_id" class="sel-producto" onchange="actualizarSabores(this)" style="width:100%">
+                <option value="">— Producto —</option>
+                {% for p in productos %}
+                <option value="{{ p.id }}">{{ p.nombre }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td><select name="sabor_id" class="sel-sabor" style="width:100%"><option value="">— Sabor —</option></select></td>
+            <td><input type="number" name="cantidad" value="1" min="1" style="width:60px;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+            <td><input type="text" name="comentario_linea" placeholder="opcional" style="width:100%;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+            <td><button type="button" onclick="this.closest('tr').remove()" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:1.1rem">✕</button></td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Líneas Otros (texto libre) — solo TIENDA -->
+  <div id="seccion-otros" class="card" style="padding:0;overflow:hidden;margin-bottom:1rem;display:none">
+    <div style="padding:.8rem 1.2rem;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h3 style="margin:0;font-size:1rem">Otros artículos</h3>
+        <small style="color:#888">Artículos fuera del catálogo: cajones de galletas, pegatinas, material, etc.</small>
+      </div>
+      <button type="button" class="btn btn-sm" style="background:#eee" onclick="añadirOtro()">+ Añadir</button>
+    </div>
+    <table id="tabla-otros" style="width:100%">
+      <thead>
+        <tr>
+          <th>Descripción</th>
+          <th style="width:80px">Cant.</th>
+          <th>Comentario</th>
+          <th style="width:50px"></th>
+        </tr>
+      </thead>
+      <tbody id="otros-body">
+        {% if editar and lineas_otros %}
+          {% for o in lineas_otros %}
+          <tr class="otro-row">
+            <td><input type="text" name="otro_descripcion" value="{{ o.descripcion }}" placeholder="Ej: Cajón de galletas" required style="width:100%;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+            <td><input type="number" name="otro_cantidad" value="{{ o.cantidad }}" min="1" style="width:65px;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+            <td><input type="text" name="otro_comentario" value="{{ o.comentario or '' }}" placeholder="opcional" style="width:100%;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+            <td><button type="button" onclick="this.closest('tr').remove()" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:1.1rem">✕</button></td>
+          </tr>
+          {% endfor %}
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;gap:.8rem">
+    <a href="{% if editar %}/pedidos/{{ pedido.id }}{% else %}/pedidos/{% endif %}" class="btn" style="background:#eee">Cancelar</a>
+    <button type="submit" class="btn btn-primary">{% if editar %}Guardar cambios{% else %}Crear pedido{% endif %}</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CATALOGO = {{ catalogo_json | safe }};
+const PRODUCTOS = {{ productos | tojson }};
+const TIENDAS_INFO = {{ tiendas | tojson }};
+const CLIENTES_B2B = {{ clientes_b2b | tojson }};
+
+// ── Buscador de cliente B2B (combobox filtrable) ──────────────
+function _labelB2B(c) {
+  return c.nombre_comercial + (c.codigo ? ` (${c.codigo})` : '');
+}
+
+function renderListaB2B(filtro) {
+  const lista = document.getElementById('b2b-lista');
+  const q = (filtro || '').toLowerCase().trim();
+  const res = CLIENTES_B2B
+    .filter(c => !q || _labelB2B(c).toLowerCase().includes(q))
+    .slice(0, 50);
+  if (res.length === 0) {
+    lista.innerHTML = '<li style="padding:.6rem;color:#aaa">Sin coincidencias</li>';
+  } else {
+    lista.innerHTML = res.map(c =>
+      `<li onmousedown="seleccionarB2B(${c.id})" style="padding:.55rem .7rem;cursor:pointer;border-bottom:1px solid #f0f0f0"
+           onmouseover="this.style.background='#f0f4ff'" onmouseout="this.style.background='#fff'">${_labelB2B(c)}</li>`
+    ).join('');
+  }
+  lista.style.display = 'block';
+}
+
+function abrirB2B() { renderListaB2B(document.getElementById('b2b-buscar').value); }
+
+function filtrarB2B() {
+  // Al teclear se invalida la selección previa hasta elegir una opción
+  document.getElementById('b2b-id').value = '';
+  renderListaB2B(document.getElementById('b2b-buscar').value);
+}
+
+function seleccionarB2B(id) {
+  const c = CLIENTES_B2B.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('b2b-id').value = c.id;
+  document.getElementById('b2b-buscar').value = _labelB2B(c);
+  document.getElementById('b2b-lista').style.display = 'none';
+}
+
+// Cerrar el desplegable al hacer clic fuera
+document.addEventListener('click', e => {
+  if (!document.getElementById('combo-b2b').contains(e.target)) {
+    document.getElementById('b2b-lista').style.display = 'none';
+  }
+});
+
+// Precargar el nombre si venimos de "editar"
+(function() {
+  const preId = parseInt(document.getElementById('b2b-id').value);
+  if (preId) {
+    const c = CLIENTES_B2B.find(x => x.id === preId);
+    if (c) document.getElementById('b2b-buscar').value = _labelB2B(c);
+  }
+})();
+
+function tipoActual() {
+  return document.querySelector('input[name="tipo"]:checked')?.value;
+}
+
+function setCatalogoRequired(requerido) {
+  document.querySelectorAll('#lineas-body .sel-producto, #lineas-body .sel-sabor')
+    .forEach(el => { el.required = requerido; });
+}
+
+function actualizarUbicacionB2B(val) {
+  const necesitaTienda = val === 'TIENDA';
+  document.getElementById('grupo-tienda').style.display = necesitaTienda ? '' : 'none';
+  document.getElementById('sel-tienda').required = necesitaTienda;
+}
+
+function actualizarTipo(tipo) {
+  document.getElementById('bloque-particular').style.display = tipo === 'PARTICULAR' ? '' : 'none';
+  document.getElementById('bloque-b2b').style.display      = tipo === 'B2B'          ? '' : 'none';
+  document.getElementById('bloque-tienda').style.display   = tipo === 'TIENDA'       ? '' : 'none';
+  document.getElementById('seccion-otros').style.display   = tipo === 'TIENDA'       ? '' : 'none';
+
+  // Catálogo obligatorio solo para B2B y PARTICULAR
+  setCatalogoRequired(tipo !== 'TIENDA');
+
+  if (tipo === 'TIENDA') {
+    actualizarAvisoPrecio();
+    // Para TIENDA/PARTICULAR la tienda siempre es requerida
+    document.getElementById('grupo-tienda').style.display = '';
+    document.getElementById('sel-tienda').required = true;
+  } else if (tipo === 'B2B') {
+    const ubVal = document.querySelector('input[name="ubicacion_entrega"]:checked')?.value || 'TIENDA';
+    actualizarUbicacionB2B(ubVal);
+  }
+}
+
+function actualizarAvisoPrecio() {
+  const tiendaId = parseInt(document.querySelector('select[name="tienda_id"]').value);
+  const tienda = TIENDAS_INFO.find(t => t.id === tiendaId);
+  const aviso = document.getElementById('aviso-precio-tienda');
+  if (!tienda) {
+    aviso.textContent = 'Selecciona la tienda para ver la política de precio.';
+  } else if (tienda.es_franquicia) {
+    aviso.innerHTML = '🏷 <strong>Franquicia</strong> — se facturará al <strong>precio de coste</strong>.';
+  } else {
+    aviso.innerHTML = '🏠 <strong>Tienda propia</strong> — precio de venta <strong>0 €</strong> (pedido interno).';
+  }
+}
+
+function actualizarSabores(selProducto, saborPresel) {
+  const row = selProducto.closest('tr');
+  const prodId = parseInt(selProducto.value);
+  const selSabor = row.querySelector('.sel-sabor');
+  const datos = CATALOGO[prodId] || {sabores: []};
+
+  selSabor.innerHTML = '<option value="">— Sabor —</option>' +
+    datos.sabores.map(s => `<option value="${s.id}" ${s.id == saborPresel ? 'selected' : ''}>${s.nombre}</option>`).join('');
+}
+
+function añadirLinea() {
+  const esTienda = tipoActual() === 'TIENDA';
+  const req = esTienda ? '' : 'required';
+  const tbody = document.getElementById('lineas-body');
+  const tr = document.createElement('tr');
+  tr.className = 'linea-row';
+  tr.innerHTML = `
+    <td>
+      <select name="producto_id" class="sel-producto" onchange="actualizarSabores(this)" ${req} style="width:100%">
+        <option value="">— Producto —</option>
+        ${PRODUCTOS.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('')}
+      </select>
+    </td>
+    <td><select name="sabor_id" class="sel-sabor" ${req} style="width:100%"><option value="">— Sabor —</option></select></td>
+    <td><input type="number" name="cantidad" value="1" min="1" style="width:60px;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+    <td><input type="text" name="comentario_linea" placeholder="opcional" style="width:100%;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+    <td><button type="button" onclick="this.closest('tr').remove()" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:1.1rem">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function añadirOtro() {
+  const tbody = document.getElementById('otros-body');
+  const tr = document.createElement('tr');
+  tr.className = 'otro-row';
+  tr.innerHTML = `
+    <td><input type="text" name="otro_descripcion" placeholder="Ej: Cajón de galletas" style="width:100%;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+    <td><input type="number" name="otro_cantidad" value="1" min="1" style="width:65px;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+    <td><input type="text" name="otro_comentario" placeholder="opcional" style="width:100%;padding:.4rem;border:1px solid #ddd;border-radius:4px"></td>
+    <td><button type="button" onclick="this.closest('tr').remove()" style="border:none;background:none;color:#e74c3c;cursor:pointer;font-size:1.1rem">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+// Validación al enviar: TIENDA necesita al menos una línea de catálogo O un otro
+document.querySelector('form').addEventListener('submit', function(e) {
+  if (tipoActual() !== 'TIENDA') return;
+  const tieneLinea = [...document.querySelectorAll('#lineas-body .sel-producto')].some(s => s.value);
+  const tieneOtro  = [...document.querySelectorAll('#otros-body input[name="otro_descripcion"]')].some(i => i.value.trim());
+  if (!tieneLinea && !tieneOtro) {
+    e.preventDefault();
+    alert('Añade al menos una tarta del catálogo o un artículo en "Otros".');
+  }
+});
+
+// Inicializar
+(function() {
+  const sel = document.querySelector('input[name="tipo"]:checked');
+  if (sel) actualizarTipo(sel.value);
+
+  document.querySelector('select[name="tienda_id"]').addEventListener('change', function() {
+    if (tipoActual() === 'TIENDA') actualizarAvisoPrecio();
+  });
+})();
+
+// Si editar, repoblar sabores/tamaños de las líneas existentes
+{% if editar and lineas %}
+(function() {
+  const lineasData = {{ lineas | tojson }};
+  const rows = document.querySelectorAll('#lineas-body .linea-row');
+  rows.forEach((row, i) => {
+    const selProd = row.querySelector('.sel-producto');
+    const l = lineasData[i];
+    if (selProd && l) actualizarSabores(selProd, l.sabor_id);
+  });
+})();
+{% endif %}
+</script>
+{% endblock %}

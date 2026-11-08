@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block titulo %}Catálogo · Sabores — Obrador Demo{% endblock %}
+{% block topbar %}Catálogo › Sabores{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+  <h1 class="pagina-titulo" style="margin:0">Catálogo</h1>
+  <div style="display:flex;gap:.6rem">
+    <button class="btn btn-sm" onclick="document.getElementById('modal-importar').classList.add('abierto')">Importar varios</button>
+    <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-nuevo').classList.add('abierto')">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Nuevo sabor
+    </button>
+  </div>
+</div>
+
+<nav class="cat-tabs">
+  <a class="cat-tab" href="/catalogo/productos">Productos</a>
+  <a class="cat-tab activo" href="/catalogo/sabores">Sabores</a>
+</nav>
+
+{% if error %}<div class="alerta-error">{{ error }}</div>{% endif %}
+
+<p style="color:#666;font-size:.88rem;margin-bottom:1rem">
+  Marca en qué productos aparece cada sabor. Si un sabor no está marcado en ningún producto, no se usa en ningún sitio (pero no se borra).
+</p>
+
+{% if not items %}
+  <div class="cat-empty"><p>No hay sabores todavía. Crea el primero con <strong>“Nuevo sabor”</strong>.</p></div>
+{% else %}
+<div class="cat-cards">
+  {% for s in items %}
+  <div class="cat-card">
+    <div class="cat-card-head">
+      <h3>{{ s.nombre }}{% if s.abreviatura %} <span class="sub">· {{ s.abreviatura }}</span>{% endif %}</h3>
+      <div class="cat-card-actions">
+        <button class="btn btn-sm" style="background:#eee"
+          onclick="abrirEditar({{ s.id }}, '{{ s.nombre }}', {{ s.orden }}, '{{ s.abreviatura }}')" title="Editar">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="asign-label">Aparece en</div>
+    {% if not productos %}
+      <p style="color:#999;font-size:.82rem">No hay productos activos.</p>
+    {% else %}
+    <div class="chips">
+      {% for p in productos %}
+      <form method="post" action="/catalogo/sabores/{{ s.id }}/producto/{{ p.id }}/asignacion" style="display:inline">
+        <button type="submit" class="chip {{ 'on' if p.id in s.asignados else '' }}">
+          <svg class="icon tick" style="width:13px;height:13px" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          {{ p.nombre }}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Modal nuevo sabor -->
+<div class="modal-overlay" id="modal-nuevo">
+  <div class="modal">
+    <h3>Nuevo sabor</h3>
+    <form method="post" action="/catalogo/sabores/crear">
+      <div class="form-group">
+        <label>Nombre del sabor</label>
+        <input type="text" name="nombre" required placeholder="Ej: MATCHA" style="text-transform:uppercase">
+      </div>
+      <p style="font-size:.82rem;color:#888;margin:.4rem 0">Se crea sin asignar. Después marca en qué productos aparece.</p>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-nuevo').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal importar varios -->
+<div class="modal-overlay" id="modal-importar">
+  <div class="modal" style="max-width:480px">
+    <h3>Importar sabores</h3>
+    <form method="post" action="/catalogo/sabores/importar">
+      <div class="form-group">
+        <label>Un sabor por línea</label>
+        <textarea name="nombres" rows="8" placeholder="MATCHA&#10;BROWNIE&#10;CARAMELO SALADO" style="width:100%;font-family:monospace;font-size:.9rem"></textarea>
+      </div>
+      <p style="font-size:.82rem;color:#888;margin:.4rem 0">Los ya existentes se saltan. Se crean sin asignar a ningún producto.</p>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-importar').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Importar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal editar -->
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal">
+    <h3>Editar sabor</h3>
+    <form method="post" id="form-editar">
+      <div class="form-group"><label>Nombre</label><input type="text" name="nombre" id="edit-nombre" required style="text-transform:uppercase"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+        <div class="form-group"><label>Orden (1 = primero)</label><input type="number" name="orden" id="edit-orden"></div>
+        <div class="form-group"><label>Abreviatura (etiquetas)</label><input type="text" name="abreviatura" id="edit-abrev" maxlength="10" style="text-transform:uppercase"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-editar').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function abrirEditar(id, nombre, orden, abrev) {
+    document.getElementById('form-editar').action = '/catalogo/sabores/' + id + '/editar';
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-orden').value = orden;
+    document.getElementById('edit-abrev').value = abrev;
+    document.getElementById('modal-editar').classList.add('abierto');
+  }
+  document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('abierto'); }));
+</script>
+{% endblock %}

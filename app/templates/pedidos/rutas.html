@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block titulo %}Rutas de reparto — Obrador Demo{% endblock %}
+{% block topbar %}Pedidos{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Rutas de reparto</h1>
+  <button onclick="window.print()" class="btn btn-primary">🖨 Imprimir</button>
+</div>
+
+<form method="get" style="margin-bottom:1.5rem;display:flex;gap:.5rem;align-items:center">
+  <input type="date" name="fecha" value="{{ fecha }}" style="padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+  <button type="submit" class="btn btn-primary">Ver</button>
+  <a href="/pedidos/rutas?fecha={{ manana }}" class="btn">📅 Mañana</a>
+</form>
+
+{% macro tabla_paradas(paradas, con_orden) %}
+  <table style="width:100%">
+    <thead>
+      <tr>
+        {% if con_orden %}<th style="width:44px">Orden</th>{% endif %}
+        <th>#</th>
+        <th>Restaurante</th>
+        <th>Dirección</th>
+        <th>Teléfono</th>
+        <th>Ventana</th>
+        <th>Entrega</th>
+        <th>Comentario</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in paradas %}
+      <tr>
+        {% if con_orden %}
+        <td style="text-align:center">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#1a3a8f;color:#fff;font-size:.8rem;font-weight:700">{{ loop.index }}</span>
+        </td>
+        {% endif %}
+        <td style="font-weight:600;color:#555">
+          <a href="/pedidos/{{ p.id }}" style="color:#1a3a8f">#{{ p.id }}</a>
+        </td>
+        <td style="font-weight:600">{{ p.cliente }}</td>
+        <td style="font-size:.88rem;color:#444">{{ p.direccion }}</td>
+        <td style="font-size:.88rem">{{ p.telefono }}</td>
+        <td style="font-size:.88rem;white-space:nowrap">{{ p.ventana }}</td>
+        <td>
+          {% if p.ubicacion_entrega == 'RESTAURANTE' %}
+            <span class="badge" style="background:#d1fae5;color:#065f46">Restaurante</span>
+          {% else %}
+            <span class="badge" style="background:#e3f0ff;color:#1a5276">{{ p.tienda }}</span>
+          {% endif %}
+        </td>
+        <td style="font-size:.85rem;color:#666">{{ p.comentario }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% if not rutas and not zonas %}
+<div class="card" style="padding:2rem;text-align:center;color:#aaa">
+  No hay pedidos B2B para el {{ fecha_dt.strftime('%d/%m/%Y') }}.
+</div>
+{% else %}
+
+{# ── Rutas planificadas (orden de reparto del Centro de impresión) ── #}
+{% for ruta in rutas %}
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:1.5rem">
+  <div style="padding:.7rem 1.2rem;background:#1e3a5f;border-bottom:1px solid #16304d;display:flex;align-items:center;gap:.8rem">
+    <span style="font-weight:700;font-size:1.05rem;color:#fff">🚚 {{ ruta.nombre }}</span>
+    <span style="background:#fff;color:#1e3a5f;border-radius:12px;padding:.1rem .6rem;font-size:.8rem;font-weight:700">{{ ruta.paradas | length }} parada{% if ruta.paradas | length != 1 %}s{% endif %}</span>
+  </div>
+  {{ tabla_paradas(ruta.paradas, True) }}
+</div>
+{% endfor %}
+
+{# ── Pedidos aún sin asignar a una ruta (agrupados por zona) ── #}
+{% if rutas and zonas %}
+<h2 style="font-size:.95rem;color:#888;text-transform:uppercase;letter-spacing:.05em;margin:2rem 0 .8rem">Sin asignar a ruta</h2>
+{% endif %}
+{% for zona, pedidos_zona in zonas.items() %}
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:1.5rem">
+  <div style="padding:.7rem 1.2rem;background:#f0f4ff;border-bottom:1px solid #dde3f7;display:flex;align-items:center;gap:.8rem">
+    <span style="font-weight:700;font-size:1.05rem;color:#1a3a8f">📍 {{ zona }}</span>
+    <span style="background:#1a3a8f;color:#fff;border-radius:12px;padding:.1rem .6rem;font-size:.8rem">{{ pedidos_zona | length }} pedido{% if pedidos_zona | length != 1 %}s{% endif %}</span>
+  </div>
+  {{ tabla_paradas(pedidos_zona, False) }}
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<style>
+@media print {
+  .sidebar, .topbar, form, button { display: none !important; }
+  .contenido { margin: 0; padding: 0; }
+  .card { break-inside: avoid; }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block titulo %}Tiendas — Obrador Demo{% endblock %}
+{% block topbar %}Administración › Tiendas{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Tiendas</h1>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-nuevo').classList.add('abierto')">+ Nueva tienda</button>
+</div>
+
+{% if error %}<div class="alerta-error">{{ error }}</div>{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead><tr><th>Nombre</th><th>Tipo</th><th>Dirección</th><th>Otros</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for t in tiendas %}
+      <tr>
+        <td>
+          <strong>{{ t.nombre }}</strong>
+          <button class="btn btn-sm" style="margin-left:.5rem;background:#eee"
+            data-id="{{ t.id }}"
+            data-nombre="{{ t.nombre }}"
+            data-direccion="{{ t.direccion or '' }}"
+            data-otros="{{ t.otros or '' }}"
+            data-franquicia="{{ t.es_franquicia | tojson }}"
+            data-cliente="{{ t.cliente_b2b_id or '' }}"
+            data-codigo="{{ t.codigo_albaran or '' }}"
+            data-congelados="{{ t.es_congelados | tojson }}"
+            onclick="abrirEditar(this)">✏️</button>
+        </td>
+        <td>
+          <form method="post" action="/tiendas/{{ t.id }}/toggle-franquicia" style="display:inline">
+            {% if t.es_franquicia %}
+            <button class="btn btn-sm" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">Franquicia</button>
+            {% else %}
+            <button class="btn btn-sm" style="background:#e0f2fe;color:#0369a1;border:1px solid #bfdbfe">Propia</button>
+            {% endif %}
+          </form>
+          {% if t.es_congelados %}
+          <span class="btn btn-sm" style="background:#e0f2fe;color:#0c4a6e;border:1px solid #7dd3fc;cursor:default">❄ Congelados</span>
+          {% endif %}
+        </td>
+        <td>{{ t.direccion or '—' }}</td>
+        <td style="max-width:200px;color:#555;font-size:.85rem">{{ t.otros or '—' }}</td>
+        <td><span class="badge {{ 'badge-activo' if t.activa else 'badge-inactivo' }}">{{ 'Activa' if t.activa else 'Inactiva' }}</span></td>
+        <td style="white-space:nowrap">
+          <form method="post" action="/tiendas/{{ t.id }}/toggle" style="display:inline">
+            <button class="btn btn-sm {{ 'btn-danger' if t.activa else 'btn-primary' }}">{{ 'Desactivar' if t.activa else 'Activar' }}</button>
+          </form>
+          <form method="post" action="/tiendas/{{ t.id }}/eliminar" style="display:inline"
+            onsubmit="return confirm('¿Eliminar {{ t.nombre }}? Esta acción no se puede deshacer.')">
+            <button class="btn btn-sm btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal-overlay" id="modal-nuevo">
+  <div class="modal">
+    <h3>Nueva tienda</h3>
+    <form method="post" action="/tiendas/crear">
+      <div class="form-group"><label>Nombre</label><input type="text" name="nombre" required placeholder="Ej: CENTRO"></div>
+      <div class="form-group"><label>Dirección (opcional)</label><input type="text" name="direccion" placeholder="Calle..."></div>
+      <div class="form-group"><label>Otros (notas especiales)</label><textarea name="otros" rows="2" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:6px" placeholder="Ej: necesitan bolsas extra los viernes"></textarea></div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+          <input type="checkbox" name="es_congelados"> ❄ Tienda de congelados
+        </label>
+        <small style="color:#64748b">Recibe reposición del congelador y descongela a vitrina (reparto no diario).</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-nuevo').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal">
+    <h3>Editar tienda</h3>
+    <form method="post" id="form-editar">
+      <input type="hidden" name="es_franquicia" id="edit-es-franquicia" value="on">
+      <div class="form-group"><label>Nombre</label><input type="text" name="nombre" id="edit-nombre" required></div>
+      <div class="form-group"><label>Dirección</label><input type="text" name="direccion" id="edit-dir"></div>
+      <div class="form-group"><label>Otros (notas especiales)</label><textarea name="otros" id="edit-otros" rows="2" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:6px"></textarea></div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+          <input type="checkbox" name="es_congelados" id="edit-es-congelados"> ❄ Tienda de congelados
+        </label>
+        <small style="color:#64748b">Recibe reposición del congelador y descongela a vitrina (reparto no diario).</small>
+      </div>
+      <div id="edit-franquicia-campos" style="display:none">
+        <div class="form-group">
+          <label>Código de albarán</label>
+          <input type="text" name="codigo_albaran" id="edit-codigo-albaran" maxlength="10" placeholder="Ej: F">
+        </div>
+        <div class="form-group">
+          <label>Cliente de facturación (franquicia)</label>
+          <select name="cliente_b2b_id" id="edit-cliente-b2b">
+            <option value="">— Sin asignar —</option>
+            {% for c in clientes_franquicia %}
+            <option value="{{ c.id }}">{{ c.nombre_comercial }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-editar').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  function abrirEditar(btn) {
+    const d = btn.dataset;
+    const esFranquicia = d.franquicia === 'true';
+    document.getElementById('form-editar').action = '/tiendas/' + d.id + '/editar';
+    document.getElementById('edit-nombre').value = d.nombre;
+    document.getElementById('edit-dir').value = d.direccion || '';
+    document.getElementById('edit-otros').value = d.otros || '';
+    document.getElementById('edit-es-congelados').checked = d.congelados === 'true';
+    document.getElementById('edit-es-franquicia').disabled = !esFranquicia;
+    document.getElementById('edit-franquicia-campos').style.display = esFranquicia ? 'block' : 'none';
+    document.getElementById('edit-codigo-albaran').value = d.codigo || '';
+    document.getElementById('edit-cliente-b2b').value = d.cliente || '';
+    document.getElementById('modal-editar').classList.add('abierto');
+  }
+  document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('abierto'); }));
+</script>
+{% endblock %}

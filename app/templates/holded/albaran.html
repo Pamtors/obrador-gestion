@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block titulo %}{{ pedido.doc_label if pedido else 'Documento' }} Holded — Pedido #{{ pedido.id if pedido else '' }}{% endblock %}
+{% block topbar %}Holded{% endblock %}
+
+{% block contenido %}
+
+{% if not pedido %}
+  <div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.75rem 1rem;border-radius:6px;margin-bottom:1.2rem">
+    {% for e in errores %}<p>❌ {{ e }}</p>{% endfor %}
+  </div>
+  <a href="javascript:history.back()" class="btn" style="background:#eee">← Volver</a>
+
+{% elif errores and errores[0].startswith('FALTA_HOLDED_ID:') %}
+  {# ── Cliente sin ID de Holded ──────────────────────────────────────────── #}
+  {% set partes = errores[0].split(':') %}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+    <h1 class="pagina-titulo" style="margin:0">{{ pedido.doc_label }} — Pedido #{{ pedido.id }}</h1>
+    <a href="/pedidos/{{ pedido.id }}" class="btn" style="background:#eee">← Volver al pedido</a>
+  </div>
+  <div style="background:#fef3c7;border:1px solid #fcd34d;color:#78350f;padding:1rem 1.2rem;border-radius:8px;margin-bottom:1rem">
+    <p style="font-weight:700;margin:0 0 .5rem">⚠️ Falta el ID de Holded del cliente</p>
+    <p style="margin:0 0 .8rem">
+      El cliente <strong>{{ partes[2] if partes|length > 2 else pedido.b2b_nombre }}</strong>
+      no tiene configurado su ID de Holded. Sin él no se puede crear el documento.
+    </p>
+    <a href="/clientes/{{ partes[1] }}" class="btn btn-primary" style="font-size:.9rem">
+      Ir a la ficha del cliente para configurarlo →
+    </a>
+  </div>
+
+{% elif resultado %}
+  {# ── Resultado exitoso ─────────────────────────────────────────────────── #}
+  <div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:1rem 1.2rem;border-radius:6px;margin-bottom:1.5rem">
+    <p style="font-size:1.1rem;font-weight:700;margin:0 0 .4rem">✅ {{ pedido.doc_label }} creado en Holded</p>
+    <p style="margin:0">ID: <code style="background:#bbf7d0;padding:2px 6px;border-radius:4px;font-size:.95rem">{{ resultado }}</code></p>
+  </div>
+
+  <div class="card" style="padding:1rem 1.2rem;margin-bottom:1rem">
+    <p><strong>Cliente:</strong> {{ pedido.b2b_nombre }}</p>
+    <p style="margin-top:.4rem"><strong>Fecha recogida:</strong> {{ pedido.fecha_recogida.strftime('%d/%m/%Y') }}</p>
+  </div>
+
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <a href="/pedidos/{{ pedido.id }}" class="btn btn-primary">← Volver al pedido</a>
+    <a href="https://app.holded.com/invoicing/deliveries" target="_blank" class="btn" style="background:#eee">
+      Ver en Holded ↗
+    </a>
+  </div>
+
+{% else %}
+  {# ── Preview ───────────────────────────────────────────────────────────── #}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+    <h1 class="pagina-titulo" style="margin:0">{{ pedido.doc_label }} — Pedido #{{ pedido.id }}</h1>
+    <a href="/pedidos/{{ pedido.id }}" class="btn" style="background:#eee">← Volver al pedido</a>
+  </div>
+
+  {% if errores %}
+  <div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.75rem 1rem;border-radius:6px;margin-bottom:1.2rem">
+    {% for e in errores %}<p>❌ {{ e }}</p>{% endfor %}
+  </div>
+  {% endif %}
+
+  {% if pedido.holded_doc_id %}
+  <div style="background:#fef3c7;border:1px solid #fcd34d;color:#92400e;padding:.75rem 1rem;border-radius:6px;margin-bottom:1.2rem">
+    ⚠️ Este pedido ya tiene un documento en Holded (ID: <code>{{ pedido.holded_doc_id }}</code>).
+    Si continúas, se creará uno nuevo adicional.
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:1rem">
+    <h3 style="margin-top:0;font-size:1rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.05em">
+      Datos del documento
+    </h3>
+    <table style="width:100%">
+      <tr><td style="color:#888;width:140px">Tipo</td><td><strong>{{ pedido.doc_label }}</strong></td></tr>
+      <tr><td style="color:#888">Cliente</td><td><strong>{{ pedido.b2b_nombre }}</strong></td></tr>
+      <tr><td style="color:#888">Holded ID</td><td><code style="font-size:.85rem">{{ pedido.b2b_id_holded }}</code></td></tr>
+      <tr><td style="color:#888">Fecha</td><td>{{ pedido.fecha_recogida.strftime('%d/%m/%Y') }}</td></tr>
+      <tr><td style="color:#888">Nº documento</td><td>{{ 'FAC' if pedido.doc_tipo_holded == 'invoice' else 'ALB' }}-{{ "%05d"|format(pedido.id) }}</td></tr>
+    </table>
+  </div>
+
+  {% if lineas %}
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.2rem">
+    <div style="padding:.8rem 1.2rem;border-bottom:1px solid #eee">
+      <h3 style="margin:0;font-size:1rem">Líneas del documento</h3>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Descripción</th>
+          <th style="text-align:center">Uds.</th>
+          <th style="text-align:right">Precio unit.</th>
+          <th style="text-align:right">Subtotal</th>
+          <th style="text-align:center">IVA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in lineas %}
+        <tr>
+          <td>{{ l.sabor_nombre }} {{ l.tamano_nombre }}</td>
+          <td style="text-align:center">{{ l.cantidad }}</td>
+          <td style="text-align:right">{{ "%.2f"|format(l.precio_franquicia) }} €</td>
+          <td style="text-align:right;font-weight:600">{{ "%.2f"|format(l.cantidad * l.precio_franquicia) }} €</td>
+          <td style="text-align:center;color:#888">10%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        {% set base_total = namespace(v=0) %}
+        {% for l in lineas %}{% set base_total.v = base_total.v + l.cantidad * l.precio_franquicia %}{% endfor %}
+        <tr style="background:#f9fafb">
+          <td colspan="3" style="text-align:right;font-weight:700;padding:.6rem 1rem">TOTAL BASE:</td>
+          <td style="text-align:right;font-weight:700">{{ "%.2f"|format(base_total.v) }} €</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% endif %}
+
+  {% if not errores %}
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+    <form method="post" action="/holded/albaran/{{ pedido.id }}">
+      {% if pedido.holded_doc_id %}
+        <input type="hidden" name="recrear" value="1">
+        <button class="btn btn-danger" type="submit"
+                onclick="return confirm('¿Crear un nuevo documento en Holded? El pedido ya tiene uno registrado.')">
+          Recrear {{ pedido.doc_label | lower }}
+        </button>
+      {% else %}
+        <button class="btn btn-primary" type="submit">Crear {{ pedido.doc_label | lower }} en Holded</button>
+      {% endif %}
+    </form>
+  </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

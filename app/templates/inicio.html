@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block titulo %}Inicio — Obrador Demo{% endblock %}
+{% block topbar %}Inicio{% endblock %}
+
+{% block contenido %}
+<h1 class="pagina-titulo">Bienvenido, {{ usuario.nombre }}</h1>
+
+<div class="card">
+  <p>Has iniciado sesión como <strong>{{ usuario.rol_nombre }}</strong>
+  {% if usuario.tienda %}en la tienda <strong>{{ usuario.tienda.nombre }}</strong>{% endif %}.</p>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-top:1rem">
+
+  {% if usuario.puede("pedidos") %}
+  <a href="/pedidos/" style="text-decoration:none">
+    <div class="card" style="text-align:center;cursor:pointer">
+      <div style="font-size:2rem">📋</div>
+      <div style="font-weight:600;margin-top:.5rem">Bandeja de pedidos</div>
+    </div>
+  </a>
+  {% endif %}
+
+  {% if usuario.puede("stock.partes") %}
+  <a href="/stock/" style="text-decoration:none">
+    <div class="card" style="text-align:center;cursor:pointer">
+      <div style="font-size:2rem">📦</div>
+      <div style="font-weight:600;margin-top:.5rem">Parte de stock</div>
+    </div>
+  </a>
+  {% endif %}
+
+  {% if usuario.puede_servicio("produccion") %}
+  <a href="/horneado/" style="text-decoration:none">
+    <div class="card" style="text-align:center;cursor:pointer">
+      <div style="font-size:2rem">🔥</div>
+      <div style="font-weight:600;margin-top:.5rem">Lista de horneado</div>
+    </div>
+  </a>
+  {% endif %}
+
+  {% if usuario.puede_servicio("admin") %}
+  <a href="/usuarios/" style="text-decoration:none">
+    <div class="card" style="text-align:center;cursor:pointer">
+      <div style="font-size:2rem">👥</div>
+      <div style="font-weight:600;margin-top:.5rem">Usuarios</div>
+    </div>
+  </a>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titulo %}Necesidades de stock — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Necesidades{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+  <h1 class="pagina-titulo" style="margin:0">Necesidades del día</h1>
+  <a href="/horneado/?fecha={{ fecha.isoformat() }}" class="btn btn-primary">Ver en horneado</a>
+</div>
+
+<!-- Selector de fecha -->
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+  <a href="/stock/necesidades/?fecha={{ ayer_iso }}" class="btn btn-sm" style="background:#eee">◀</a>
+  <input type="date" name="fecha" value="{{ fecha.isoformat() }}"
+         style="padding:.4rem .7rem;border:1px solid #ddd;border-radius:6px">
+  <a href="/stock/necesidades/?fecha={{ manana_iso }}" class="btn btn-sm" style="background:#eee">▶</a>
+  <button type="submit" class="btn btn-primary btn-sm">Ver</button>
+  <a href="/stock/necesidades/" class="btn btn-sm">Hoy</a>
+</form>
+
+{% if not nec_data %}
+<div class="card" style="text-align:center;color:#aaa;padding:3rem">
+  No hay tiendas con reparto configurado para el {{ fecha | fecha_es('%A %d/%m/%Y') | upper }},
+  o no hay previsiones configuradas.
+  <br><br>
+  <a href="/stock/reparto/" class="btn" style="margin-right:.5rem">Configurar reparto</a>
+  <a href="/stock/prevision/" class="btn">Configurar previsión</a>
+</div>
+{% else %}
+
+<!-- Totales globales -->
+<div class="card" style="padding:1.2rem;margin-bottom:1rem;background:#eff6ff;border:1px solid #bfdbfe">
+  <div style="font-weight:700;font-size:.9rem;color:#1e40af;margin-bottom:.8rem;text-transform:uppercase;letter-spacing:.05em">
+    Total a hornear / enviar — {{ fecha | fecha_es('%A %d/%m/%Y') | upper }}
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+    {% for (prod, sabor), cant in totales.items() %}
+    {% if cant > 0 %}
+    <span style="background:#1e3a5f;color:#fff;padding:.3rem .7rem;border-radius:999px;font-size:.85rem;font-weight:600">
+      {{ cant }} × {{ sabor }} {{ prod }}
+    </span>
+    {% endif %}
+    {% endfor %}
+    {% if not totales or totales.values()|sum == 0 %}
+    <span style="color:#64748b">Sin necesidades — el stock es suficiente.</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Detalle por tienda -->
+{% for tienda_nombre, datos in nec_data.items() %}
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:1rem">
+  <div style="background:#334155;color:#fff;padding:.6rem 1rem;font-weight:700;display:flex;justify-content:space-between;align-items:center">
+    <span>{{ tienda_nombre }}</span>
+    {% if datos.sobrantes %}
+    <span style="font-size:.78rem;font-weight:400;opacity:.9">
+      Sobrante ayer: {% for nombre, cant in datos.sobrantes.items() %}{{ cant }} {{ nombre|lower }}{% if not loop.last %} · {% endif %}{% endfor %}
+    </span>
+    {% endif %}
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:.88rem">
+    <thead>
+      <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0">
+        <th style="padding:.5rem 1rem;text-align:left">Producto / Sabor / Tamaño</th>
+        <th style="padding:.5rem .8rem;text-align:center">Previsión</th>
+        <th style="padding:.5rem .8rem;text-align:center">Stock ayer</th>
+        <th style="padding:.5rem .8rem;text-align:center">Necesidad</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in datos.filas %}
+      <tr style="border-bottom:1px solid #f0f0f0;{% if f.necesidad > 0 %}background:#fefce8{% endif %}">
+        <td style="padding:.4rem 1rem;color:#444">
+          <span style="font-weight:600">{{ f.prod_nombre }}</span>
+          · {{ f.sabor_nombre }}
+        </td>
+        <td style="text-align:center;color:#475569">{{ f.prevision }}</td>
+        <td style="text-align:center;color:#475569">{{ f.stock_ayer }}</td>
+        <td style="text-align:center;font-weight:{% if f.necesidad > 0 %}800{% else %}400{% endif %};color:{% if f.necesidad > 0 %}#dc2626{% else %}#16a34a{% endif %}">
+          {{ f.necesidad if f.necesidad > 0 else "OK" }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+{% endif %}
+{% endblock %}

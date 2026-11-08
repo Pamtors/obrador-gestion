@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block titulo %}Holded — Sincronizar contactos{% endblock %}
+{% block topbar %}Holded{% endblock %}
+
+{% macro badge_tipo(tipo) %}
+  {%- set etiquetas = {'client': ('Cliente', '#dcfce7', '#166534'), 'supplier': ('Proveedor', '#fee2e2', '#991b1b'), 'lead': ('Lead', '#e0e7ff', '#3730a3'), 'debtor': ('Deudor', '#fef3c7', '#92400e'), 'creditor': ('Acreedor', '#fef3c7', '#92400e')} -%}
+  {%- set e = etiquetas.get(tipo, (tipo or '—', '#eee', '#666')) -%}
+  <span class="badge" style="background:{{ e[1] }};color:{{ e[2] }}">{{ e[0] }}</span>
+{% endmacro %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Sincronizar contactos de Holded</h1>
+  <a href="/holded/" class="btn" style="background:#eee">← Documentos</a>
+</div>
+
+{% if error %}
+  <div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.9rem 1.2rem;border-radius:8px">
+    ❌ {{ error }}
+    {% if 'API key' in error %}
+      — <a href="/holded/config">Ir a Configuración</a>
+    {% endif %}
+  </div>
+
+{% elif resultado %}
+  {# ── Resultado ─────────────────────────────────────────────────────────── #}
+  <div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:1rem 1.2rem;border-radius:8px;margin-bottom:1.5rem">
+    <p style="font-weight:700;font-size:1.05rem;margin:0 0 .5rem">✅ Sincronización completada</p>
+    <ul style="margin:0;padding-left:1.2rem">
+      <li>{{ resultado.ya_vinculados }} contacto{{ 's' if resultado.ya_vinculados != 1 }} ya estaban vinculados (sin cambios)</li>
+      <li>{{ resultado.vinculados }} cliente{{ 's' if resultado.vinculados != 1 }} vinculado{{ 's' if resultado.vinculados != 1 }} por nombre</li>
+      <li>{{ resultado.creados }} cliente{{ 's' if resultado.creados != 1 }} nuevo{{ 's' if resultado.creados != 1 }} creado{{ 's' if resultado.creados != 1 }}</li>
+    </ul>
+  </div>
+  <a href="/clientes/" class="btn btn-primary">Ver clientes B2B →</a>
+  <a href="/holded/sync" class="btn" style="background:#eee;margin-left:.5rem">Volver a sincronizar</a>
+
+{% elif plan %}
+  {# ── Preview ───────────────────────────────────────────────────────────── #}
+  <p style="color:#555;margin-bottom:1.2rem">
+    Se han descargado <strong>{{ (plan.ya_vinculados|length) + (plan.vincular_por_nombre|length) + (plan.crear_nuevos|length) }}</strong>
+    contactos de Holded. Revisa el plan antes de ejecutar.
+  </p>
+
+  {# Resumen #}
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="card" style="text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:#166534">{{ plan.ya_vinculados|length }}</div>
+      <div style="font-size:.85rem;color:#888;margin-top:.3rem">Ya vinculados<br><small>Sin cambios</small></div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:#92400e">{{ plan.vincular_por_nombre|length }}</div>
+      <div style="font-size:.85rem;color:#888;margin-top:.3rem">Vincular por nombre<br><small>Se asigna ID de Holded</small></div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:2rem;font-weight:800;color:#1e40af">{{ plan.crear_nuevos|length }}</div>
+      <div style="font-size:.85rem;color:#888;margin-top:.3rem">Crear nuevos<br><small>Clientes nuevos en BD</small></div>
+    </div>
+  </div>
+
+  {# Vincular por nombre #}
+  {% if plan.vincular_por_nombre %}
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1rem">
+    <div style="padding:.7rem 1.2rem;background:#fef3c7;border-bottom:1px solid #fcd34d;font-weight:600;color:#78350f">
+      ⚠️ Se vinculará el ID de Holded por coincidencia de nombre ({{ plan.vincular_por_nombre|length }})
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" checked onclick="toggleGrupo('vincular_ids', this.checked)"></th>
+        <th>Nombre</th><th>Tipo</th><th>ID Holded</th><th>CIF</th>
+      </tr></thead>
+      <tbody>
+        {% for c in plan.vincular_por_nombre %}
+        <tr>
+          <td><input type="checkbox" name="vincular_ids" value="{{ c.id_holded }}" form="sync-form" checked></td>
+          <td><a href="/clientes/{{ c.cliente_id }}">{{ c.nombre }}</a></td>
+          <td>{{ badge_tipo(c.tipo) }}</td>
+          <td><code style="font-size:.8rem">{{ c.id_holded }}</code></td>
+          <td style="color:#888">{{ c.cif or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# Crear nuevos #}
+  {% if plan.crear_nuevos %}
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1rem">
+    <div style="padding:.7rem 1.2rem;background:#dbeafe;border-bottom:1px solid #93c5fd;font-weight:600;color:#1e40af;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+      ➕ Clientes nuevos que se crearán ({{ plan.crear_nuevos|length }})
+      <span style="margin-left:auto;font-weight:400;font-size:.85rem;color:#1e40af">
+        Los proveedores y otros contactos vienen <strong>desmarcados</strong>. Marca solo los que quieras crear.
+      </span>
+    </div>
+    <table>
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" onclick="toggleGrupo('crear_ids', this.checked)"></th>
+        <th>Nombre</th><th>Tipo</th><th>ID Holded</th><th>CIF</th><th>Email</th>
+      </tr></thead>
+      <tbody>
+        {% for c in plan.crear_nuevos %}
+        <tr>
+          <td><input type="checkbox" name="crear_ids" value="{{ c.id_holded }}" form="sync-form"
+                     {% if c.tipo in ('client', 'lead', '') %}checked{% endif %}></td>
+          <td>{{ c.nombre }}</td>
+          <td>{{ badge_tipo(c.tipo) }}</td>
+          <td><code style="font-size:.8rem">{{ c.id_holded }}</code></td>
+          <td style="color:#888">{{ c.cif or '—' }}</td>
+          <td style="color:#888">{{ c.email or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {# Ya vinculados (colapsable) #}
+  {% if plan.ya_vinculados %}
+  <details style="margin-bottom:1.5rem">
+    <summary style="cursor:pointer;color:#555;font-size:.9rem;padding:.4rem 0">
+      Ver {{ plan.ya_vinculados|length }} contacto{{ 's' if plan.ya_vinculados|length != 1 }} ya vinculado{{ 's' if plan.ya_vinculados|length != 1 }} (sin cambios)
+    </summary>
+    <div class="card" style="padding:0;overflow:hidden;margin-top:.5rem">
+      <table>
+        <thead><tr><th>Nombre</th><th>ID Holded</th></tr></thead>
+        <tbody>
+          {% for c in plan.ya_vinculados %}
+          <tr>
+            <td><a href="/clientes/{{ c.cliente_id }}">{{ c.nombre }}</a></td>
+            <td><code style="font-size:.8rem">{{ c.id_holded }}</code></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endif %}
+
+  {% if plan.vincular_por_nombre or plan.crear_nuevos %}
+  <form id="sync-form" method="post" action="/holded/sync">
+    <button class="btn btn-primary" type="submit"
+            onclick="return confirm('¿Ejecutar la sincronización de los contactos marcados?')">
+      Sincronizar seleccionados
+    </button>
+    <span style="color:#888;font-size:.85rem;margin-left:.6rem">Solo se procesan las filas marcadas.</span>
+  </form>
+  {% else %}
+  <p style="color:#166534;font-weight:600">✅ Todo está ya sincronizado. No hay cambios pendientes.</p>
+  {% endif %}
+
+{% else %}
+  {# ── Estado inicial (raro llegar aquí sin plan ni error) #}
+  <p style="color:#888">Cargando…</p>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleGrupo(nombre, marcado) {
+  document.querySelectorAll(`input[name="${nombre}"]`).forEach(cb => { cb.checked = marcado; });
+}
+</script>
+{% endblock %}

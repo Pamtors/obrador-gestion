@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block titulo %}Mermas — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Mermas{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Mermas</h1>
+  <div style="display:flex;gap:.5rem">
+    <a href="/stock/" class="btn">← Partes</a>
+    {% if usuario.puede_editar("stock.mermas") %}
+    <a href="/stock/mermas/nuevo" class="btn btn-primary">+ Registrar merma</a>
+    {% endif %}
+  </div>
+</div>
+
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+  {% if usuario.rol.value != "TIENDAS" %}
+  <select name="tienda_id" style="padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+    <option value="">Todas las tiendas</option>
+    {% for t in tiendas %}
+    <option value="{{ t.id }}" {% if filtro_tienda == t.id %}selected{% endif %}>{{ t.nombre }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  <input type="date" name="desde" value="{{ filtro_desde }}" style="padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+  <input type="date" name="hasta" value="{{ filtro_hasta }}" style="padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+  <button type="submit" class="btn btn-primary">Filtrar</button>
+  {% if filtro_tienda or filtro_desde or filtro_hasta %}
+  <a href="/stock/mermas/" class="btn">Limpiar</a>
+  {% endif %}
+</form>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Tienda</th>
+        <th>Producto</th>
+        <th>Sabor</th>
+        <th style="text-align:center">Cant.</th>
+        <th>Motivo</th>
+        <th>Comentario</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in filas %}
+      <tr>
+        <td>{{ f.fecha.strftime('%d/%m/%Y') }}</td>
+        <td>{{ f.tienda }}</td>
+        <td style="font-weight:600">{{ f.producto }}</td>
+        <td>{{ f.sabor }}</td>
+        <td style="text-align:center;font-weight:700;color:#dc2626">{{ f.cantidad }}</td>
+        <td>
+          {% if f.motivo == "CADUCIDAD" %}<span class="badge" style="background:#fee2e2;color:#991b1b">Caducidad</span>
+          {% elif f.motivo == "ROTURA" %}<span class="badge" style="background:#fef3c7;color:#92400e">Rotura</span>
+          {% elif f.motivo == "DEVOLUCION" %}<span class="badge" style="background:#ede9fe;color:#5b21b6">Devolución</span>
+          {% else %}<span class="badge" style="background:#f3f4f6;color:#374151">Otro</span>{% endif %}
+        </td>
+        <td style="color:#666;font-size:.9rem">{{ f.comentario }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:#aaa;padding:2rem">No hay mermas registradas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

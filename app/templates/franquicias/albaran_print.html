@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Albarán {{ albaran.numero }} — Obrador Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 12px; background: #fff; color: #111; }
+
+    .controls {
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      background: #f8f8f8;
+      border-bottom: 1px solid #ddd;
+    }
+    .btn-print {
+      padding: 7px 16px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .contenido { padding: 10mm 12mm; }
+
+    .cabecera { display: flex; justify-content: space-between; gap: 2rem; margin-bottom: 8mm; }
+    .bloque h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #666; margin-bottom: 3px; }
+    .bloque p { font-size: 12px; margin: 0; line-height: 1.4; }
+
+    .titulo-doc { text-align: center; margin-bottom: 6mm; }
+    .titulo-doc h1 { font-size: 18px; letter-spacing: .03em; }
+    .titulo-doc p { color: #666; font-size: 12px; margin-top: 2px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 4mm; }
+    th, td { padding: 5px 8px; border-bottom: 1px solid #ddd; font-size: 12px; text-align: left; }
+    th { background: #f5f5f5; font-weight: 700; }
+    td.cant { text-align: center; font-weight: 700; width: 70px; }
+    th.num, td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; width: 90px; }
+    tfoot td { border-bottom: none; padding-top: 6px; }
+    tfoot .tot-label { text-align: right; }
+    tfoot .tot-final td { border-top: 2px solid #333; font-size: 13px; font-weight: 700; }
+
+    @media print {
+      .controls { display: none; }
+      body { margin: 0; }
+    }
+    @page { size: A4 portrait; margin: 10mm; }
+  </style>
+</head>
+<body>
+
+<div class="controls">
+  <button class="btn-print" onclick="window.print()">🖨 Imprimir (Ctrl+P)</button>
+</div>
+
+<div class="contenido">
+  <div class="cabecera">
+    <div class="bloque">
+      <h3>Emisor</h3>
+      <p><strong>{{ empresa.razon_social or '—' }}</strong></p>
+      {% if empresa.cif %}<p>CIF: {{ empresa.cif }}</p>{% endif %}
+      {% if empresa.direccion %}<p>{{ empresa.direccion }}</p>{% endif %}
+      <p>{{ empresa.cp }} {{ empresa.poblacion }} {{ empresa.provincia }}</p>
+      {% if empresa.telefono %}<p>Tel: {{ empresa.telefono }}</p>{% endif %}
+      {% if empresa.email %}<p>{{ empresa.email }}</p>{% endif %}
+      {% if empresa.registro_sanitario %}<p>RS: {{ empresa.registro_sanitario }}</p>{% endif %}
+    </div>
+    <div class="bloque" style="text-align:right">
+      <h3>Receptor</h3>
+      <p><strong>{{ cliente.nombre_comercial if cliente else '—' }}</strong></p>
+      {% if cliente %}
+        {% if cliente.razon_social %}<p>{{ cliente.razon_social }}</p>{% endif %}
+        {% if cliente.cif %}<p>CIF: {{ cliente.cif }}</p>{% endif %}
+        {% if cliente.direccion_entrega or cliente.direccion_social %}
+          <p>{{ cliente.direccion_entrega or cliente.direccion_social }}</p>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="titulo-doc">
+    <h1>ALBARÁN {{ albaran.numero }}</h1>
+    <p>{{ tienda.nombre if tienda else '—' }} · {{ albaran.fecha.strftime('%d/%m/%Y') }}</p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Descripción</th>
+        <th class="cant">Cantidad</th>
+        <th class="num">Precio unit.</th>
+        <th class="num">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in albaran.lineas %}
+      <tr>
+        <td>{{ l.descripcion }}</td>
+        <td class="cant">{{ l.cantidad }}</td>
+        <td class="num">{{ "%.2f"|format(l.precio_unit) }} €</td>
+        <td class="num">{{ "%.2f"|format(l.cantidad * l.precio_unit) }} €</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center;color:#aaa;padding:2rem">Sin líneas.</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if albaran.lineas %}
+    <tfoot>
+      <tr>
+        <td colspan="2"></td>
+        <td class="num tot-label">Base imponible</td>
+        <td class="num">{{ "%.2f"|format(albaran.total_sin_iva) }} €</td>
+      </tr>
+      <tr>
+        <td colspan="2"></td>
+        <td class="num tot-label">IVA (10%)</td>
+        <td class="num">{{ "%.2f"|format(albaran.total_iva) }} €</td>
+      </tr>
+      <tr class="tot-final">
+        <td colspan="2"></td>
+        <td class="num tot-label">TOTAL</td>
+        <td class="num">{{ "%.2f"|format(albaran.total) }} €</td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</div>
+
+</body>
+</html>

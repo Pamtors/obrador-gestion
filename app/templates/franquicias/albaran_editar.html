@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block titulo %}Editar albarán — {{ tienda.nombre }}{% endblock %}
+{% block topbar %}Franquicias{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Editar albarán — {{ tienda.nombre }} — {{ albaran.fecha.strftime('%d/%m/%Y') }}</h1>
+  <a href="/franquicias/albaranes/{{ tienda.id }}?fecha={{ albaran.fecha.isoformat() }}" class="btn" style="background:#eee">← Volver</a>
+</div>
+
+<p style="color:#888;margin-bottom:1rem">Nº albarán: <code>{{ albaran.numero }}</code></p>
+
+{% if errores %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.75rem 1rem;border-radius:6px;margin-bottom:1.2rem">
+  {% for e in errores %}<p>❌ {{ e }}</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if albaran.holded_doc_id %}
+<div style="background:#fef3c7;border:1px solid #fcd34d;color:#78350f;padding:.9rem 1.2rem;border-radius:8px;margin-bottom:1.2rem">
+  ⚠️ Este albarán ya está en Holded (doc: <code>{{ albaran.holded_doc_id }}</code>). Editarlo aquí NO actualiza
+  Holded — corrígelo también allí a mano.
+</div>
+{% endif %}
+
+<p style="color:#888;font-size:.9rem;margin-bottom:1rem">
+  Solo se puede editar la cantidad de cada línea ya generada. No se pueden añadir ni quitar líneas.
+</p>
+
+<form method="post" action="/franquicias/albaranes/{{ albaran.id }}/editar">
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1.2rem">
+    <table>
+      <thead>
+        <tr>
+          <th>Descripción</th>
+          <th style="text-align:right">Precio unit.</th>
+          <th style="text-align:center">Cantidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in albaran.lineas %}
+        <tr>
+          <td>{{ l.descripcion }}</td>
+          <td style="text-align:right">{{ "%.2f"|format(l.precio_unit) }} €</td>
+          <td style="text-align:center">
+            <input type="hidden" name="linea_id" value="{{ l.id }}">
+            <input type="number" name="cantidad" value="{{ l.cantidad }}" min="0" step="1" required
+                   style="width:80px;text-align:center">
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;gap:.5rem">
+    <button class="btn btn-primary" type="submit">Guardar cambios</button>
+    <a href="/franquicias/albaranes/{{ tienda.id }}?fecha={{ albaran.fecha.isoformat() }}" class="btn" style="background:#eee">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

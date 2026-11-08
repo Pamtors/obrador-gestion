@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block titulo %}Días de reparto — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Días de reparto{% endblock %}
+
+{% block contenido %}
+<style>
+  .dr-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem; flex-wrap:wrap; gap:.6rem }
+  .dr-hint {
+    display:flex; align-items:center; gap:.5rem;
+    background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af;
+    padding:.7rem 1rem; border-radius:8px; font-size:.86rem; margin-bottom:1rem;
+  }
+  .dr-saved {
+    display:inline-flex; align-items:center; gap:.35rem;
+    font-size:.8rem; font-weight:600; color:#15803d;
+    opacity:0; transition:opacity .2s;
+  }
+  .dr-saved.show { opacity:1 }
+
+  .dr-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.08) }
+  .dr-grid { border-collapse:separate; border-spacing:0; width:100%; background:#fff }
+  .dr-grid th, .dr-grid td { padding:0 }
+  .dr-grid thead th {
+    background:#1e3a5f; color:#fff; font-size:.72rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.05em; padding:.7rem .4rem; text-align:center;
+    position:sticky; top:0;
+  }
+  .dr-grid thead th.dr-th-tienda { text-align:left; padding-left:1rem; left:0; z-index:3 }
+  .dr-grid td.dr-td-tienda {
+    font-weight:600; color:#334155; font-size:.9rem; padding:.4rem 1rem;
+    background:#fff; position:sticky; left:0; z-index:1;
+    border-right:1px solid #eef2f7; white-space:nowrap;
+  }
+  .dr-grid tbody tr:not(:last-child) td { border-bottom:1px solid #f1f5f9 }
+  .dr-cell-wrap { padding:.3rem; text-align:center }
+
+  /* Celda toggle táctil */
+  .dr-cell {
+    width:100%; min-width:52px; min-height:44px;
+    border:1.5px solid #e2e8f0; border-radius:8px; background:#fff;
+    display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; color:#cbd5e1; transition:background .15s, border-color .15s, color .15s, transform .08s;
+  }
+  .dr-cell:hover { border-color:#94a3b8 }
+  .dr-cell:focus-visible { outline:3px solid rgba(245,200,66,.5); outline-offset:1px }
+  .dr-cell:active { transform:scale(.94) }
+  .dr-cell[aria-pressed="true"] {
+    background:#1e3a5f; border-color:#1e3a5f; color:#fff;
+  }
+  .dr-cell[aria-pressed="true"]:hover { background:#162d4a; border-color:#162d4a }
+  .dr-cell svg { width:20px; height:20px }
+  .dr-cell.busy { opacity:.5; pointer-events:none }
+</style>
+
+<div class="dr-head">
+  <h1 class="pagina-titulo" style="margin:0">Días de reparto por tienda</h1>
+  <div style="display:flex;align-items:center;gap:.8rem">
+    <span class="dr-saved" id="dr-saved">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+      Guardado
+    </span>
+    <a href="/stock/" class="btn">← Stock</a>
+  </div>
+</div>
+
+<div class="dr-hint">
+  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+  Toca un día para activarlo o quitarlo. Se guarda solo. Solo los días marcados generan necesidades y entran en la lista de horneado.
+</div>
+
+<div class="dr-scroll">
+  <table class="dr-grid">
+    <thead>
+      <tr>
+        <th class="dr-th-tienda">Tienda</th>
+        {% for dia in dias %}
+        <th title="{{ dia }}">{{ dia[:3] }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tiendas %}
+      <tr>
+        <td class="dr-td-tienda">{{ t.nombre }}</td>
+        {% for i in range(7) %}
+        {% set on = (t.id ~ '_' ~ i) in activos %}
+        <td class="dr-cell-wrap">
+          {% if usuario.puede_editar("stock.dias_reparto") %}
+          <button type="button" class="dr-cell" role="switch"
+                  aria-pressed="{{ 'true' if on else 'false' }}"
+                  aria-label="{{ t.nombre }} — {{ dias[i] }}"
+                  data-tienda="{{ t.id }}" data-dia="{{ i }}"
+                  onclick="toggleDia(this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="{{ '' if on else 'visibility:hidden' }}"><path d="M20 6 9 17l-5-5"/></svg>
+          </button>
+          {% else %}
+          <span class="dr-cell" role="img"
+                aria-label="{{ t.nombre }} — {{ dias[i] }}: {{ 'activo' if on else 'inactivo' }}"
+                style="cursor:default;{{ '' if on else 'color:#e2e8f0' }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="{{ '' if on else 'visibility:hidden' }}"><path d="M20 6 9 17l-5-5"/></svg>
+          </span>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  const savedChip = document.getElementById('dr-saved');
+  let savedTimer = null;
+  function flashSaved() {
+    savedChip.classList.add('show');
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => savedChip.classList.remove('show'), 1800);
+  }
+
+  async function toggleDia(btn) {
+    if (btn.classList.contains('busy')) return;
+    const nuevo = btn.getAttribute('aria-pressed') !== 'true';
+    // Optimista
+    setEstado(btn, nuevo);
+    btn.classList.add('busy');
+
+    const body = new URLSearchParams({ tienda_id: btn.dataset.tienda, dia: btn.dataset.dia });
+    try {
+      const r = await fetch('/stock/reparto/toggle', { method: 'POST', body });
+      if (!r.ok) throw new Error('http');
+      const data = await r.json();
+      setEstado(btn, data.activo);   // fuente de verdad del servidor
+      flashSaved();
+    } catch (e) {
+      setEstado(btn, !nuevo);         // revertir
+      alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.');
+    } finally {
+      btn.classList.remove('busy');
+    }
+  }
+
+  function setEstado(btn, on) {
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.querySelector('svg').style.visibility = on ? 'visible' : 'hidden';
+  }
+</script>
+{% endblock %}

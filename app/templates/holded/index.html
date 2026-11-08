@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block titulo %}Holded — Documentos{% endblock %}
+{% block topbar %}Holded{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Documentos Holded</h1>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+    <a href="/holded/" class="btn {% if not solo_pendientes %}btn-primary{% endif %}" style="{% if solo_pendientes %}background:#eee{% endif %}">
+      Todos
+    </a>
+    <a href="/holded/?pendientes=1" class="btn {% if solo_pendientes %}btn-primary{% endif %}" style="{% if not solo_pendientes %}background:#eee{% endif %}">
+      Pendientes
+    </a>
+    {% set n_pendientes = pedidos | selectattr('holded_doc_id', 'none') | list | length %}
+    {% if n_pendientes > 0 %}
+    <form method="post" action="/holded/crear-todos" style="display:inline">
+      <button class="btn" type="submit"
+              style="background:#166534;color:#fff"
+              onclick="return confirm('¿Crear {{ n_pendientes }} documento{{ 's' if n_pendientes != 1 }} pendiente{{ 's' if n_pendientes != 1 }} en Holded?\n\nSe saltarán los pedidos sin cliente o sin precio.')">
+        ⚡ Crear {{ n_pendientes }} pendiente{{ 's' if n_pendientes != 1 }}
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if resultado_lote %}
+  {% if resultado_lote.error_global %}
+  <div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.9rem 1.2rem;border-radius:8px;margin-bottom:1.2rem">
+    ❌ {{ resultado_lote.error_global }} — <a href="/holded/config">Configurar API key</a>
+  </div>
+  {% else %}
+  <div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:.9rem 1.2rem;border-radius:8px;margin-bottom:1rem">
+    <strong>✅ {{ resultado_lote.creados | length }} documento{{ 's' if resultado_lote.creados | length != 1 }} creado{{ 's' if resultado_lote.creados | length != 1 }} en Holded</strong>
+    {% if resultado_lote.creados %}
+    <ul style="margin:.5rem 0 0;padding-left:1.2rem;font-size:.88rem">
+      {% for c in resultado_lote.creados %}
+      <li>#{{ c.id }} — {{ c.nombre }} ({{ c.doc_label }})</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if resultado_lote.restantes %}
+    <p style="margin:.5rem 0 0;font-size:.88rem">Quedan {{ resultado_lote.restantes }} pendiente{{ 's' if resultado_lote.restantes != 1 }} — vuelve a pulsar el botón para procesar el siguiente lote.</p>
+    {% endif %}
+  </div>
+  {% if resultado_lote.errores %}
+  <div style="background:#fef3c7;border:1px solid #fcd34d;color:#78350f;padding:.9rem 1.2rem;border-radius:8px;margin-bottom:1.2rem">
+    <strong>⚠️ {{ resultado_lote.errores | length }} error{{ 'es' if resultado_lote.errores | length != 1 }} (saltados)</strong>
+    <ul style="margin:.5rem 0 0;padding-left:1.2rem;font-size:.88rem">
+      {% for e in resultado_lote.errores %}
+      <li><a href="/pedidos/{{ e.id }}">#{{ e.id }}</a> {{ e.nombre }} — {{ e.error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% endif %}
+{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Cliente B2B</th>
+        <th>Recogida</th>
+        <th>Horneado</th>
+        <th>Tipo doc.</th>
+        <th>Estado Holded</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      <tr>
+        <td><a href="/pedidos/{{ p.id }}" style="font-weight:600">#{{ p.id }}</a></td>
+        <td>
+          {% if p.b2b_id %}
+            <a href="/clientes/{{ p.b2b_id }}">{{ p.b2b_nombre }}</a>
+          {% else %}
+            {{ p.b2b_nombre }}
+          {% endif %}
+        </td>
+        <td>{{ p.fecha_recogida.strftime('%d/%m/%Y') if p.fecha_recogida else '—' }}</td>
+        <td style="color:#888">{{ p.fecha_horneado.strftime('%d/%m/%Y') if p.fecha_horneado else '—' }}</td>
+        <td>
+          <span style="font-size:.8rem;font-weight:600;padding:2px 8px;border-radius:10px;
+            {% if p.doc_label == 'Factura' %}background:#dbeafe;color:#1e40af{% else %}background:#f3e8ff;color:#6b21a8{% endif %}">
+            {{ p.doc_label }}
+          </span>
+        </td>
+        <td>
+          {% if p.holded_doc_id %}
+            <span style="font-size:.8rem;color:#166534;font-weight:600">✓ Creado</span>
+            <code style="font-size:.75rem;color:#888;margin-left:.4rem">{{ p.holded_doc_id[:8] }}…</code>
+          {% else %}
+            <span style="font-size:.8rem;color:#92400e;font-weight:600">Pendiente</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right">
+          <a href="/holded/albaran/{{ p.id }}" class="btn btn-sm"
+             style="font-size:.8rem;padding:3px 10px;background:{% if p.holded_doc_id %}#eee{% else %}#2563eb{% endif %};color:{% if p.holded_doc_id %}#333{% else %}#fff{% endif %}">
+            {% if p.holded_doc_id %}Ver / Recrear{% else %}Previsualizar{% endif %}
+          </a>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="text-align:center;color:#aaa;padding:2rem">
+          No hay pedidos B2B{% if solo_pendientes %} pendientes{% endif %}.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

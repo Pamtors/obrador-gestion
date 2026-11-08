@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block titulo %}Usuarios — Obrador Demo{% endblock %}
+{% block topbar %}Administración › Usuarios{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Usuarios del sistema</h1>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-nuevo').classList.add('abierto')">
+    + Nuevo usuario
+  </button>
+</div>
+
+{% if error %}<div class="alerta-error">{{ error }}</div>{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Email</th>
+        <th>Rol</th>
+        <th>Tienda</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td>{{ u.nombre }}</td>
+        <td>{{ u.email }}</td>
+        <td>
+          <span class="badge badge-{{ u.rol.value.lower() }}">{{ nombres[u.rol] }}</span>
+        </td>
+        <td>{{ u.tienda.nombre if u.tienda else "—" }}</td>
+        <td>
+          <span class="badge {{ 'badge-activo' if u.activo else 'badge-inactivo' }}">
+            {{ "Activo" if u.activo else "Inactivo" }}
+          </span>
+        </td>
+        <td>
+          {% if u.id != usuario.id %}
+          <form method="post" action="/usuarios/{{ u.id }}/toggleactivo" style="display:inline">
+            <button type="submit" class="btn btn-sm {{ 'btn-danger' if u.activo else 'btn-primary' }}">
+              {{ "Desactivar" if u.activo else "Activar" }}
+            </button>
+          </form>
+          {% else %}
+          <span style="color:#aaa;font-size:.82rem">Tú</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal nuevo usuario -->
+<div class="modal-overlay" id="modal-nuevo">
+  <div class="modal">
+    <h3>Nuevo usuario</h3>
+    <form method="post" action="/usuarios/crear">
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" name="nombre" required>
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label>Contraseña inicial</label>
+        <input type="password" name="contrasena" required minlength="8">
+      </div>
+      <div class="form-group">
+        <label>Rol</label>
+        <select name="rol" required>
+          {% for r in roles %}
+          <option value="{{ r.value }}">{{ nombres[r] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tienda (solo para el puesto Tiendas)</label>
+        <select name="tienda_id">
+          <option value="">— Sin tienda —</option>
+          {% for t in tiendas %}
+          <option value="{{ t.id }}">{{ t.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-nuevo').classList.remove('abierto')">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">Crear usuario</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Cerrar modal haciendo clic fuera
+  document.getElementById('modal-nuevo').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('abierto');
+  });
+</script>
+{% endblock %}

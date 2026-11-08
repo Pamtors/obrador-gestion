@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tartas congeladas — Obrador Demo</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
+    :root { --azul:#0369a1; --cielo:#38bdf8; --gris:#f8fafc; --borde:#e2e8f0; --texto:#1e293b; --muted:#64748b }
+    body { font-family:system-ui, sans-serif; background:#f4f4f4; color:var(--texto); font-size:14px }
+
+    .controles { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid var(--borde);
+      padding:.6rem 1rem; display:flex; align-items:center; gap:.6rem; flex-wrap:wrap }
+    .controles .titulo { font-weight:800; font-size:.95rem; color:var(--azul); margin-right:.3rem }
+    .btn { display:inline-flex; align-items:center; gap:.35rem; padding:.45rem .9rem; border:none; border-radius:7px;
+      font-size:.84rem; font-weight:600; cursor:pointer; text-decoration:none; min-height:38px }
+    .btn-azul { background:var(--azul); color:#fff }
+    .btn-gris { background:#eee; color:#333; border:1px solid #ddd }
+    .filtros input[type="date"] { padding:.4rem .6rem; border:1px solid #ddd; border-radius:6px; font-size:.84rem; min-height:38px }
+
+    .contenido { padding:1rem; max-width:900px; margin:0 auto }
+    .dia-titulo { font-size:1.1rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--azul);
+      border-bottom:3px solid var(--cielo); padding-bottom:.5rem; margin-bottom:.4rem;
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.5rem }
+    .subnota { color:var(--muted); font-size:.85rem; margin-bottom:1.2rem }
+    .dia-totales span { padding:.2rem .6rem; border-radius:6px; background:#e0f2fe; color:#0c4a6e; font-weight:700; font-size:.85rem }
+
+    .seccion { background:#fff; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.08); overflow:hidden; margin-bottom:1rem }
+    .sec-head { padding:.6rem 1rem; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#fff;
+      display:flex; align-items:center; justify-content:space-between; background:#0369a1 }
+    .sec-total { font-size:.85rem; font-weight:800; background:rgba(255,255,255,.2); padding:.15rem .5rem; border-radius:5px }
+    table { width:100%; border-collapse:collapse }
+    thead th { padding:.5rem .8rem; background:var(--gris); border-bottom:1px solid var(--borde); font-size:.7rem;
+      font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); text-align:center }
+    thead th:first-child { text-align:left; padding-left:1rem }
+    tbody tr { border-bottom:1px solid #f1f5f9 }
+    tbody td { padding:.55rem .8rem; vertical-align:middle }
+    tbody td:first-child { padding-left:1rem }
+    .sabor-nombre { font-weight:600; color:var(--texto); font-size:.9rem }
+    .sabor-base { font-size:.75rem; color:var(--muted); font-weight:400; margin-left:.3rem }
+    .cant { text-align:center; font-weight:800; color:var(--azul); font-size:1rem }
+    .vacio { text-align:center; padding:4rem 1rem; color:var(--muted) }
+
+    /* ── Móvil ── */
+    @media (max-width: 900px) {
+      /* Por debajo de 16px Safari iOS hace auto-zoom al enfocar y ya no vuelve */
+      input, select, textarea { font-size:16px }
+      .filtros input[type="date"] { font-size:16px; min-height:44px }
+      .btn { min-height:44px }
+      .contenido { padding:.8rem }
+    }
+
+    @media print {
+      .controles { display:none !important }
+      .seccion { box-shadow:none; border:1px solid #ddd }
+      body { background:#fff }
+      .contenido { padding:0; max-width:100% }
+    }
+    @page { size:A4 portrait; margin:12mm }
+  </style>
+</head>
+<body>
+
+<div class="controles">
+  <span class="titulo">❄ Tartas congeladas</span>
+  <a href="/horneado/?fecha={{ fecha.isoformat() }}" class="btn btn-gris">← Horneado normal</a>
+  <a href="/horneado/congeladas?fecha={{ hoy_iso }}" class="btn btn-gris">Hoy</a>
+  <div class="filtros">
+    <form method="get" action="/horneado/congeladas" style="display:flex;gap:.4rem">
+      <a href="/horneado/congeladas?fecha={{ ayer_iso }}" class="btn btn-gris">◀</a>
+      <input type="date" name="fecha" value="{{ fecha.isoformat() }}">
+      <button type="submit" class="btn btn-azul">Ver</button>
+      <a href="/horneado/congeladas?fecha={{ siguiente_iso }}" class="btn btn-gris">▶</a>
+    </form>
+  </div>
+  <button class="btn btn-gris" onclick="window.print()" style="margin-left:auto">Imprimir</button>
+</div>
+
+<div class="contenido">
+  <div class="dia-titulo">
+    <span>{{ fecha | fecha_es('%A %d de %B de %Y') | upper }}</span>
+    <div class="dia-totales"><span>{{ total_congeladas }} tartas a preparar</span></div>
+  </div>
+  <p class="subnota">Reposición del congelador para el reparto del
+    <strong>{{ fecha_reparto_cong | fecha_es('%A %d/%m') | capitalize }}</strong> (dentro de 2 días).</p>
+
+  {% if not congeladas_por_producto %}
+  <div class="vacio">
+    <strong style="display:block;color:#475569;font-size:1rem">Sin congeladas para preparar</strong>
+    <p style="margin-top:.4rem">Ninguna tienda de congelados tiene reparto el {{ fecha_reparto_cong.strftime('%d/%m/%Y') }},
+       o su congelador ya cubre el objetivo.</p>
+  </div>
+  {% else %}
+  {% for prod_nombre, sec in congeladas_por_producto.items() %}
+  <div class="seccion">
+    <div class="sec-head">
+      <span>{{ prod_nombre }}</span>
+      <span class="sec-total">{{ sec.filas | map(attribute='cantidad') | sum }}</span>
+    </div>
+    <table>
+      <thead><tr><th style="width:60%">Sabor / Base</th><th style="width:40%">A preparar</th></tr></thead>
+      <tbody>
+        {% for f in sec.filas %}
+        <tr>
+          <td>
+            <span class="sabor-nombre">{{ f.sabor_nombre }}</span>
+            {% if f.sabor_real != f.sabor_nombre %}<span class="sabor-base">({{ f.sabor_real }})</span>{% endif %}
+          </td>
+          <td class="cant">{{ f.cantidad }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+
+</body>
+</html>

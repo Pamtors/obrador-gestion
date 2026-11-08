@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block titulo %}Previsión de stock — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Previsión{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Previsión de stock</h1>
+  <a href="/stock/" class="btn">← Stock</a>
+</div>
+
+<div class="card" style="padding:.8rem 1rem;background:#eff6ff;border:1px solid #bfdbfe;margin-bottom:1rem;font-size:.88rem;color:#1e40af">
+  Configura cuántas tartas enteras debería haber de cada tipo en cada tienda según el día de la semana.
+  La diferencia con el stock real del día anterior genera las necesidades de reposición.
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table style="width:100%;border-collapse:collapse;font-size:.9rem">
+    <thead>
+      <tr style="background:#1e3a5f;color:#fff">
+        <th style="padding:.6rem 1rem;text-align:left">Tienda</th>
+        <th style="padding:.6rem 1rem;text-align:left">Días con reparto</th>
+        <th style="padding:.6rem 1rem;text-align:center">Editar</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in tiendas %}
+      <tr style="border-bottom:1px solid #f0f0f0">
+        <td style="padding:.6rem 1rem;font-weight:600">
+          {{ t.nombre }}
+          {% if t.es_congelados %}<span class="badge" style="background:#e0f2fe;color:#0c4a6e;margin-left:.4rem">❄ Congelados</span>{% endif %}
+        </td>
+        <td style="padding:.6rem 1rem;color:#555">
+          {% if t.dias %}
+            {% for d in t.dias | sort %}
+            <span class="badge" style="background:#dbeafe;color:#1e40af;margin-right:.25rem">{{ dias[d][:3] }}</span>
+            {% endfor %}
+          {% else %}
+          <span style="color:#aaa">Sin días de reparto configurados</span>
+          {% endif %}
+        </td>
+        <td style="text-align:center;padding:.5rem">
+          {% if t.dias or t.es_congelados %}
+          <a href="/stock/prevision/{{ t.id }}" class="btn btn-sm btn-primary">
+            {% if t.es_congelados %}Editar objetivo vitrina{% else %}Editar previsión{% endif %}
+          </a>
+          {% else %}
+          <a href="/stock/reparto/" class="btn btn-sm" style="background:#fee2e2;color:#991b1b">
+            Configurar reparto primero
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

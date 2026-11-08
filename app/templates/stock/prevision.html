@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block titulo %}Previsión {{ tienda.nombre }} — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Previsión › {{ tienda.nombre }}{% endblock %}
+
+{% block contenido %}
+<style>
+  .pg-th { padding:.6rem .5rem; text-align:center; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#fff; background:#1e3a5f; white-space:nowrap }
+  .pg-cat { background:#f1f5f9; font-weight:800; text-transform:uppercase; letter-spacing:.05em; font-size:.78rem; color:#334155; padding:.4rem .8rem; border-top:2px solid #cbd5e1 }
+  .pg-n { width:56px; padding:.3rem; border:1px solid #ddd; border-radius:5px; text-align:center; font-size:.9rem }
+  .pg-tot { font-weight:800; background:#f8fafc }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">
+    {% if es_congelados %}Objetivo de vitrina — {{ tienda.nombre }}{% else %}Previsión — {{ tienda.nombre }}{% endif %}
+  </h1>
+  <a href="/stock/prevision/" class="btn">← Volver</a>
+</div>
+
+{% if es_congelados %}
+<div class="card" style="padding:.8rem 1rem;background:#e0f2fe;border:1px solid #7dd3fc;margin-bottom:1rem;font-size:.88rem;color:#0c4a6e">
+  ❄ Tienda de congelados: aquí defines cuántas tartas debe haber en <strong>vitrina cada día</strong>.
+  De ahí salen la descongelación diaria y la reposición del congelador.
+</div>
+{% endif %}
+
+{% if not dias_columnas %}
+<p style="color:#b45309;background:#fffbeb;padding:.8rem 1rem;border-radius:8px">
+  Esta tienda no tiene días de reparto configurados. Ve a <a href="/stock/reparto/">Días de reparto</a> primero.
+</p>
+{% else %}
+<form method="post" action="/stock/prevision/{{ tienda.id }}">
+  <div class="card" style="padding:0;overflow-x:auto;margin-bottom:1rem">
+    <table style="width:100%;border-collapse:collapse;font-size:.88rem">
+      <thead>
+        <tr>
+          <th class="pg-th" style="text-align:left;background:#0f2540">Sabor</th>
+          {% for d in dias_columnas %}
+          <th class="pg-th">{{ dias[d] }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% set ns = namespace(prod=0) %}
+        {% for f in filas %}
+          {% if f.prod_id != ns.prod %}
+          <tr><td class="pg-cat" colspan="{{ dias_columnas|length + 1 }}" style="background:{{ f.color }};color:#fff">
+            {{ f.prod_nombre }}
+          </td></tr>
+          {% set ns.prod = f.prod_id %}
+          {% endif %}
+          <tr style="border-bottom:1px solid #f0f0f0">
+            <td style="padding:.4rem .8rem;color:#444">{{ f.sabor_nombre }}</td>
+            {% for d in dias_columnas %}
+            <td style="padding:.25rem;text-align:center">
+              <input class="pg-n" type="number" min="0" max="999"
+                     name="pv_{{ d }}_{{ f.prod_id }}_{{ f.sabor_id }}"
+                     value="{{ previsiones.get((d, f.prod_id, f.sabor_id), 0) }}">
+            </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;gap:.5rem">
+    <a href="/stock/prevision/{{ tienda.id }}" class="btn">Cancelar</a>
+    <button type="submit" class="btn btn-primary">Guardar previsión</button>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

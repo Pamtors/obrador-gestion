@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Datos del emisor — Obrador Demo{% endblock %}
+{% block topbar %}Franquicias{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Datos del emisor (albarán)</h1>
+</div>
+
+<form method="post" action="/franquicias/config-empresa">
+  <div class="card" style="padding:1.2rem">
+    <h3 style="margin:0 0 1rem;font-size:.95rem;color:#555;text-transform:uppercase;letter-spacing:.05em">Identidad fiscal</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+      {% set campos = [
+        ('razon_social', 'Razón social'),
+        ('cif', 'CIF'),
+        ('direccion', 'Dirección'),
+        ('cp', 'Código postal'),
+        ('poblacion', 'Población'),
+        ('provincia', 'Provincia'),
+        ('telefono', 'Teléfono'),
+        ('email', 'Email'),
+      ] %}
+      {% for campo, etiqueta in campos %}
+      <div class="form-group" style="margin:0">
+        <label style="font-size:.85rem;color:#666">{{ etiqueta }}</label>
+        <input type="text" name="{{ campo }}" value="{{ cfg[campo] }}" style="margin-top:.3rem">
+      </div>
+      {% endfor %}
+      <div class="form-group" style="margin:0">
+        <label style="font-size:.85rem;color:#666">Registro sanitario (opcional)</label>
+        <input type="text" name="registro_sanitario" value="{{ cfg.registro_sanitario }}" style="margin-top:.3rem">
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:.8rem;margin-top:1rem">
+    <button type="submit" class="btn btn-primary">Guardar configuración</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block titulo %}Clientes externos — Obrador Demo{% endblock %}
+{% block topbar %}Clientes externos{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Clientes externos</h1>
+  <button class="btn btn-primary" onclick="document.getElementById('modal-nuevo').classList.add('abierto')">+ Nuevo cliente</button>
+</div>
+
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem">
+  <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre..." style="padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px;flex:1;max-width:320px">
+  <button type="submit" class="btn btn-primary">Buscar</button>
+  {% if q %}<a href="/clientes/" class="btn">Limpiar</a>{% endif %}
+</form>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead><tr><th>Nombre comercial</th><th>Tipo</th><th>Zona ruta</th><th>Teléfono</th><th>Doc.</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for c in clientes %}
+      <tr>
+        <td><a href="/clientes/{{ c.id }}" style="font-weight:600;color:inherit;text-decoration:none">{{ c.nombre_comercial }}</a></td>
+        <td>
+          {% if c.tipo_cliente.value == "FRANQUICIA" %}
+          <span class="badge" style="background:#fef3c7;color:#92400e">Franquicia</span>
+          {% else %}
+          <span class="badge" style="background:#e0f2fe;color:#0369a1">B2B</span>
+          {% endif %}
+        </td>
+        <td>{{ c.zona_ruta or '—' }}</td>
+        <td>{{ c.telefono or '—' }}</td>
+        <td><span class="badge badge-oficina">{{ c.tipo_documento.value }}</span></td>
+        <td><span class="badge {{ 'badge-activo' if c.activo else 'badge-inactivo' }}">{{ 'Activo' if c.activo else 'Inactivo' }}</span></td>
+        <td>
+          <a href="/clientes/{{ c.id }}" class="btn btn-sm" style="background:#eee">Ver / Editar</a>
+          <form method="post" action="/clientes/{{ c.id }}/toggle" style="display:inline">
+            <button class="btn btn-sm {{ 'btn-danger' if c.activo else 'btn-primary' }}">{{ 'Desactivar' if c.activo else 'Activar' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:#aaa;padding:2rem">No hay clientes{% if q %} con ese nombre{% endif %}.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal nuevo cliente -->
+<div class="modal-overlay" id="modal-nuevo">
+  <div class="modal" style="max-width:580px;max-height:90vh;overflow-y:auto">
+    <h3>Nuevo cliente B2B</h3>
+    <form method="post" action="/clientes/crear">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+        <div class="form-group" style="grid-column:1/-1"><label>Nombre comercial *</label><input type="text" name="nombre_comercial" required></div>
+        <div class="form-group"><label>Tipo de cliente *</label>
+          <select name="tipo_cliente">
+            {% for t in tipos_cliente %}<option value="{{ t.value }}">{{ "Franquicia" if t.value == "FRANQUICIA" else "B2B (restaurante/bar)" }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>ID Holded</label><input type="text" name="id_holded" placeholder="24 caracteres hex" maxlength="24"></div>
+        <div class="form-group"><label>Razón social</label><input type="text" name="razon_social"></div>
+        <div class="form-group"><label>CIF</label><input type="text" name="cif"></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Dirección social</label><input type="text" name="direccion_social"></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Dirección de entrega</label><input type="text" name="direccion_entrega"></div>
+        <div class="form-group"><label>Zona de ruta</label><input type="text" name="zona_ruta" placeholder="Ej: Málaga centro"></div>
+        <div class="form-group"><label>Teléfono</label><input type="text" name="telefono"></div>
+        <div class="form-group"><label>Ventana entrega desde</label><input type="time" name="ventana_desde"></div>
+        <div class="form-group"><label>Ventana entrega hasta</label><input type="time" name="ventana_hasta"></div>
+        <div class="form-group"><label>Email</label><input type="email" name="email"></div>
+        <div class="form-group"><label>Tipo documento</label>
+          <select name="tipo_documento">
+            {% for t in tipos_doc %}<option value="{{ t.value }}">{{ t.value }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Envío factura</label>
+          <select name="metodo_envio_factura">
+            {% for m in metodos_envio %}<option value="{{ m.value }}">{{ m.value }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group"><label>Vía de pago</label><input type="text" name="via_pago" placeholder="Ej: Transferencia"></div>
+        <div class="form-group"><label>Cuenta bancaria</label><input type="text" name="cuenta_bancaria"></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Comentarios</label><textarea name="comentarios" rows="2" style="width:100%;padding:.6rem;border:1px solid #ddd;border-radius:6px"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-nuevo').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('abierto'); }));</script>
+{% endblock %}

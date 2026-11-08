@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block titulo %}Pedido #{{ pedido.id }} — Obrador Demo{% endblock %}
+{% block topbar %}Pedidos{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Pedido #{{ pedido.id }}</h1>
+  <div style="display:flex;gap:.5rem">
+    <a href="/imprimir/pegatinas/{{ pedido.id }}" class="btn btn-primary" target="_blank">🏷 Ver pegatinas</a>
+    <a href="/pedidos/{{ pedido.id }}/editar" class="btn" style="background:#eee">Editar</a>
+    <form method="post" action="/pedidos/{{ pedido.id }}/eliminar" onsubmit="return confirm('¿Eliminar este pedido?')">
+      <button class="btn btn-danger">Eliminar</button>
+    </form>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+  <div class="card">
+    <h3 style="margin-top:0;font-size:1rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Datos del pedido</h3>
+    <table style="width:100%">
+      <tr><td style="color:#888;width:140px">Tipo</td><td><strong>{{ pedido.tipo }}</strong></td></tr>
+      <tr><td style="color:#888">Tienda</td><td>{{ tienda.nombre if tienda else '—' }}</td></tr>
+      <tr><td style="color:#888">Recogida</td><td>{{ pedido.fecha_recogida.strftime('%d/%m/%Y') if pedido.fecha_recogida else '—' }}</td></tr>
+      <tr><td style="color:#888">Horneado</td><td>{{ pedido.fecha_horneado.strftime('%d/%m/%Y') if pedido.fecha_horneado else '—' }}</td></tr>
+      <tr><td style="color:#888">Pedido el</td><td>{{ pedido.fecha_pedido.strftime('%d/%m/%Y') if pedido.fecha_pedido else '—' }}</td></tr>
+      {% if pedido.comentario %}
+      <tr><td style="color:#888">Comentario</td><td>{{ pedido.comentario }}</td></tr>
+      {% endif %}
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;font-size:1rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Cliente</h3>
+    {% if pedido.tipo == "B2B" and b2b %}
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+        <p style="margin:0;font-weight:600">{{ b2b.nombre_comercial }}</p>
+        {% if b2b.tipo_cliente == "FRANQUICIA" %}
+        <span class="badge" style="background:#fef3c7;color:#92400e">Franquicia</span>
+        {% else %}
+        <span class="badge" style="background:#e0f2fe;color:#0369a1">B2B</span>
+        {% endif %}
+      </div>
+      {% if b2b.codigo %}<p style="margin:.3rem 0 0;color:#888;font-size:.9rem">Código: {{ b2b.codigo }}</p>{% endif %}
+      <p style="margin:.5rem 0 0"><a href="/clientes/{{ b2b.id }}" class="btn btn-sm" style="background:#eee">Ver ficha</a></p>
+    {% elif pedido.tipo == "PARTICULAR" %}
+      <p style="margin:0;font-weight:600">{{ pedido.nombre_cliente or '—' }}</p>
+      {% if pedido.referencia %}<p style="margin:.3rem 0 0;color:#888;font-size:.9rem">Ref: {{ pedido.referencia }}</p>{% endif %}
+      {% if pedido.telefono_cliente %}<p style="margin:.3rem 0 0;color:#888;font-size:.9rem">{{ pedido.telefono_cliente }}</p>{% endif %}
+    {% elif pedido.tipo == "TIENDA" %}
+      <p style="margin:0;font-weight:600">{{ tienda.nombre if tienda else '—' }}</p>
+      {% if tienda and tienda.es_franquicia %}
+      <span class="badge" style="margin-top:.5rem;display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fcd34d">Franquicia — precio al coste</span>
+      {% else %}
+      <span class="badge" style="margin-top:.5rem;display:inline-block;background:#ede9fe;color:#4338ca;border:1px solid #c4b5fd">Tienda propia — precio 0 €</span>
+      {% endif %}
+    {% else %}
+      <p style="margin:0;color:#888">—</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:1rem 1.2rem;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+    <h3 style="margin:0;font-size:1rem">Líneas del pedido</h3>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Producto</th><th>Sabor</th><th>Cant.</th><th>Comentario</th></tr>
+    </thead>
+    <tbody>
+      {% for l in lineas %}
+      <tr>
+        <td>{{ productos.get(l.producto_id, '—') }}</td>
+        <td>{{ sabores.get(l.sabor_id, {}).get('nombre', '—') }}</td>
+        <td style="text-align:center">{{ l.cantidad }}</td>
+        <td style="color:#888">{{ l.comentario or '' }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center;color:#aaa;padding:1.5rem">Sin líneas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if lineas_otros %}
+<div class="card" style="padding:0;overflow:hidden;margin-top:1rem">
+  <div style="padding:.8rem 1.2rem;border-bottom:1px solid #eee">
+    <h3 style="margin:0;font-size:1rem">Otros artículos</h3>
+  </div>
+  <table>
+    <thead><tr><th>Descripción</th><th>Cant.</th><th>Comentario</th></tr></thead>
+    <tbody>
+      {% for o in lineas_otros %}
+      <tr>
+        <td>{{ o.descripcion }}</td>
+        <td style="text-align:center">{{ o.cantidad }}</td>
+        <td style="color:#888">{{ o.comentario or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if pedido.tipo == "B2B" and usuario.puede_editar("holded") %}
+{% set es_franquicia = b2b and b2b.tipo_cliente == "FRANQUICIA" %}
+<div class="card" style="margin-top:1rem{% if es_franquicia %};border:2px solid #fcd34d;background:#fffbeb{% endif %}">
+  <h3 style="margin-top:0;font-size:1rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:{% if es_franquicia %}#92400e{% else %}#888{% endif %}">
+    {% if es_franquicia %}📋 Albarán Franquicia{% else %}Holded{% endif %}
+  </h3>
+  {% if es_franquicia and not pedido.holded_doc_id %}
+  <p style="margin:0 0 .8rem;font-size:.9rem;color:#92400e">Las franquicias requieren albarán en cada entrega.</p>
+  {% endif %}
+  {% if pedido.holded_doc_id %}
+    <p style="margin:0 0 .5rem">
+      Albarán creado — ID: <code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:.85rem">{{ pedido.holded_doc_id }}</code>
+    </p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <a href="https://app.holded.com/invoicing/deliveries" target="_blank" class="btn" style="background:#eee">Ver en Holded ↗</a>
+      <a href="/holded/albaran/{{ pedido.id }}" class="btn" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">Recrear albarán</a>
+    </div>
+  {% else %}
+    <a href="/holded/albaran/{{ pedido.id }}" class="btn {% if es_franquicia %}btn-primary{% else %}btn-primary{% endif %}" style="{% if es_franquicia %}background:#d97706;border-color:#b45309{% endif %}">
+      Crear albarán en Holded
+    </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<div style="margin-top:1rem">
+  <a href="/pedidos/" class="btn" style="background:#eee">← Volver a la bandeja</a>
+</div>
+{% endblock %}

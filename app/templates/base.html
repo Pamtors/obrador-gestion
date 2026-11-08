@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block titulo %}Obrador Demo{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/estilos.css?v=7">
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">🧀 <span>La Cheese</span>quería</div>
+    <nav class="sidebar-nav">
+      <a href="/" {% if request.url.path == "/" %}class="activo"{% endif %}>Inicio</a>
+
+      {% if usuario.puede_servicio("clientes") %}
+      <div class="seccion">Clientes</div>
+      <a href="/clientes/" {% if "/clientes/" in request.url.path %}class="activo"{% endif %}>Clientes B2B</a>
+      {% endif %}
+
+      {% if usuario.puede_servicio("pedidos") %}
+      <div class="seccion">Pedidos</div>
+      {% if usuario.puede("pedidos") %}
+      <a href="/pedidos/" {% if request.url.path == "/pedidos/" or (request.url.path.startswith("/pedidos/") and "/pedidos/rutas" not in request.url.path) %}class="activo"{% endif %}>Bandeja de pedidos</a>
+      {% endif %}
+      {% if usuario.puede("pedidos.rutas") %}
+      <a href="/pedidos/rutas" {% if "/pedidos/rutas" in request.url.path %}class="activo"{% endif %}>Rutas de reparto</a>
+      {% endif %}
+      {% endif %}
+
+      {% if usuario.puede_servicio("impresion") %}
+      <div class="seccion">Impresión</div>
+      <a href="/imprimir/" {% if "/imprimir/" in request.url.path %}class="activo"{% endif %}>Centro de impresión</a>
+      {% endif %}
+
+      {% if usuario.puede_servicio("franquicias") %}
+      <div class="seccion">Franquicias</div>
+      {% if usuario.rol.value == "TIENDAS" %}
+      <a href="/franquicias/mis-albaranes" {% if "/franquicias/" in request.url.path %}class="activo"{% endif %}>Mis albaranes</a>
+      {% else %}
+      <a href="/franquicias/albaranes" {% if "/franquicias/" in request.url.path %}class="activo"{% endif %}>Albarán franquicias</a>
+      {% endif %}
+      {% endif %}
+
+      {% if usuario.puede_servicio("stock") %}
+      <div class="seccion">Stock</div>
+      {% if usuario.puede("stock.partes") %}
+      <a href="/stock/" {% if request.url.path == "/stock/" or (request.url.path.startswith("/stock/") and request.url.path not in ["/stock/mermas/","/stock/envios/","/stock/reparto/","/stock/prevision/"] and not request.url.path.startswith("/stock/prevision/") and not request.url.path.startswith("/stock/envios")) %}class="activo"{% endif %}>Partes de stock</a>
+      {% endif %}
+      {% if usuario.puede("stock.envios") %}
+      <a href="/stock/envios/" {% if "/stock/envios" in request.url.path %}class="activo"{% endif %}>Envíos</a>
+      {% endif %}
+      {% if usuario.puede("stock.mermas") %}
+      <a href="/stock/mermas/" {% if "/stock/mermas" in request.url.path %}class="activo"{% endif %}>Mermas</a>
+      {% endif %}
+      {% if usuario.puede("stock.prevision") %}
+      <a href="/stock/prevision/" {% if "/stock/prevision" in request.url.path %}class="activo"{% endif %}>Previsión</a>
+      {% endif %}
+      {% if usuario.puede("stock.dias_reparto") %}
+      <a href="/stock/reparto/" {% if "/stock/reparto" in request.url.path %}class="activo"{% endif %}>Días reparto</a>
+      {% endif %}
+      {% endif %}
+
+      {% if usuario.puede_servicio("produccion") %}
+      <div class="seccion">Producción</div>
+      <a href="/horneado/" {% if "/horneado/" in request.url.path %}class="activo"{% endif %}>Lista de horneado</a>
+      {% endif %}
+
+      {% if usuario.puede_servicio("holded") %}
+      <div class="seccion">Holded</div>
+      <a href="/holded/" {% if request.url.path == "/holded/" %}class="activo"{% endif %}>Documentos</a>
+      <a href="/holded/sync" {% if "/holded/sync" in request.url.path %}class="activo"{% endif %}>Sync contactos</a>
+      <a href="/holded/config" {% if "/holded/config" in request.url.path %}class="activo"{% endif %}>Configuración</a>
+      {% endif %}
+
+      {% if usuario.puede_servicio("catalogo") %}
+      <div class="seccion">Catálogo</div>
+      <a href="/catalogo/productos" {% if "/catalogo/" in request.url.path %}class="activo"{% endif %}>Catálogo</a>
+      {% endif %}
+
+      {% if usuario.puede_servicio("admin") %}
+      <div class="seccion">Administración</div>
+      <a href="/tiendas/" {% if "/tiendas/" in request.url.path %}class="activo"{% endif %}>Tiendas</a>
+      <a href="/usuarios/" {% if "/usuarios/" in request.url.path %}class="activo"{% endif %}>Usuarios</a>
+      {% endif %}
+    </nav>
+    <div class="sidebar-footer">
+      {{ usuario.nombre }}<br>
+      <small>{{ usuario.rol_nombre }}</small><br><br>
+      <a href="/logout">Cerrar sesión</a>
+    </div>
+  </aside>
+
+  <!-- Velo del cajón (solo visible en móvil) -->
+  <div class="sidebar-velo"></div>
+
+  <!-- Contenido -->
+  <div class="contenido">
+    <div class="topbar">
+      <button type="button" class="nav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="sidebar">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M3 6h18M3 12h18M3 18h18"/>
+        </svg>
+      </button>
+      <span class="topbar-texto">{% block topbar %}{% endblock %}</span>
+    </div>
+    <main class="main">
+      <div class="main-inner">
+        {% block contenido %}{% endblock %}
+      </div>
+    </main>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var lateral = document.getElementById('sidebar');
+  var velo    = document.querySelector('.sidebar-velo');
+  var boton   = document.querySelector('.nav-toggle');
+
+  function cajon(abrir) {
+    lateral.classList.toggle('abierto', abrir);
+    velo.classList.toggle('abierto', abrir);
+    boton.setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    document.body.style.overflow = abrir ? 'hidden' : '';
+  }
+
+  boton.addEventListener('click', function () { cajon(!lateral.classList.contains('abierto')); });
+  velo.addEventListener('click', function () { cajon(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') cajon(false); });
+
+  // Tablas: etiquetar cada celda con su cabecera para poder apilarlas en móvil.
+  // Con menos de 4 columnas la tabla cabe en el móvil; solo se envuelve en scroll.
+  document.querySelectorAll('table').forEach(function (tabla) {
+    var etiquetas = [];
+    var filaCab = tabla.querySelector(':scope > thead > tr:last-child');
+    if (filaCab) {
+      Array.prototype.forEach.call(filaCab.cells, function (th) {
+        var n = th.colSpan || 1;
+        while (n--) etiquetas.push(th.textContent.trim());
+      });
+    }
+
+    if (etiquetas.length < 4) {
+      if (!tabla.parentNode.classList.contains('tabla-scroll')) {
+        var caja = document.createElement('div');
+        caja.className = 'tabla-scroll';
+        tabla.parentNode.insertBefore(caja, tabla);
+        caja.appendChild(tabla);
+      }
+      return;
+    }
+
+    tabla.classList.add('tabla-movil');
+    tabla.querySelectorAll(':scope > tbody > tr, :scope > tfoot > tr').forEach(function (fila) {
+      // Filas que no cuadran con la cabecera (totales, "sin resultados"): a lo ancho
+      if (fila.cells.length !== etiquetas.length) {
+        Array.prototype.forEach.call(fila.cells, function (td) { td.classList.add('celda-ancha'); });
+        return;
+      }
+      Array.prototype.forEach.call(fila.cells, function (td, i) {
+        if (i === 0 && td.textContent.trim()) td.classList.add('celda-titulo');
+        else if (etiquetas[i]) td.setAttribute('data-label', etiquetas[i]);
+        else td.classList.add('celda-ancha');
+      });
+    });
+  });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

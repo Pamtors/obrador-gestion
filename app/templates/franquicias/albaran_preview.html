@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block titulo %}Albarán franquicia — {{ preview.tienda.nombre }}{% endblock %}
+{% block topbar %}Franquicias{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">{{ preview.tienda.nombre }} — {{ preview.fecha.strftime('%d/%m/%Y') }}</h1>
+  <a href="/franquicias/albaranes?fecha={{ preview.fecha.isoformat() }}" class="btn" style="background:#eee">← Volver</a>
+</div>
+
+<p style="color:#888;margin-bottom:1rem">Nº albarán: <code>{{ numero }}</code></p>
+
+{% if errores %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.75rem 1rem;border-radius:6px;margin-bottom:1.2rem">
+  {% for e in errores %}<p>❌ {{ e }}</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if resultado == 'ok' %}
+<div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:.9rem 1.2rem;border-radius:8px;margin-bottom:1.2rem">
+  ✅ Albarán generado correctamente.
+  {% if existente %}<a href="/franquicias/albaranes/{{ existente.id }}/imprimir" target="_blank" style="margin-left:.5rem">Imprimir →</a>{% endif %}
+</div>
+{% endif %}
+
+{% if resultado == 'holded_ok' %}
+<div style="background:#dcfce7;border:1px solid #86efac;color:#166534;padding:.9rem 1.2rem;border-radius:8px;margin-bottom:1.2rem">
+  ✅ Documento creado en Holded (ID: <code>{{ existente.holded_doc_id }}</code>).
+</div>
+{% endif %}
+
+{% if aviso_holded_previo %}
+<div style="background:#fef3c7;border:1px solid #fcd34d;color:#78350f;padding:.75rem 1rem;border-radius:6px;margin-bottom:1.2rem">
+  ⚠️ {{ aviso_holded_previo }}
+</div>
+{% endif %}
+
+{% for b in preview.bloqueantes %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.6rem 1rem;border-radius:6px;margin-bottom:.5rem">🚫 {{ b }}</div>
+{% endfor %}
+{% for a in preview.avisos %}
+<div style="background:#fef3c7;border:1px solid #fcd34d;color:#78350f;padding:.6rem 1rem;border-radius:6px;margin-bottom:.5rem">⚠️ {{ a }}</div>
+{% endfor %}
+
+<div class="card" style="margin-bottom:1rem">
+  <h3 style="margin-top:0;font-size:1rem;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Receptor</h3>
+  {% if preview.cliente_b2b %}
+  <p><strong>{{ preview.cliente_b2b.nombre_comercial }}</strong></p>
+  <p style="color:#888;font-size:.9rem">CIF: {{ preview.cliente_b2b.cif or '—' }} · Holded ID: {{ preview.cliente_b2b.id_holded or '—' }}</p>
+  {% else %}
+  <p style="color:#991b1b">Sin cliente B2B asociado.</p>
+  {% endif %}
+</div>
+
+{% if preview.lineas %}
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:1.2rem">
+  <table>
+    <thead>
+      <tr>
+        <th>Descripción</th>
+        <th style="text-align:center">Uds.</th>
+        <th style="text-align:right">Precio unit.</th>
+        <th style="text-align:right">Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in preview.lineas %}
+      <tr>
+        <td>{{ l.descripcion }}</td>
+        <td style="text-align:center">{{ l.cantidad }}</td>
+        <td style="text-align:right">
+          {% if l.precio_unit is not none %}{{ "%.2f"|format(l.precio_unit) }} €
+          {% else %}<span style="color:#991b1b">sin precio</span>{% endif %}
+        </td>
+        <td style="text-align:right">
+          {% if l.subtotal is not none %}{{ "%.2f"|format(l.subtotal) }} €{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#f9fafb">
+        <td colspan="3" style="text-align:right;font-weight:700;padding:.6rem 1rem">Base:</td>
+        <td style="text-align:right;font-weight:700">{{ "%.2f"|format(preview.total_sin_iva) }} €</td>
+      </tr>
+      <tr style="background:#f9fafb">
+        <td colspan="3" style="text-align:right">IVA (10%):</td>
+        <td style="text-align:right">{{ "%.2f"|format(preview.total_iva) }} €</td>
+      </tr>
+      <tr style="background:#f9fafb">
+        <td colspan="3" style="text-align:right;font-weight:700">TOTAL:</td>
+        <td style="text-align:right;font-weight:700">{{ "%.2f"|format(preview.total) }} €</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% endif %}
+
+<div style="display:flex;gap:.5rem;flex-wrap:wrap">
+  {% if usuario.puede_editar("franquicias") %}
+  <form method="post" action="/franquicias/albaranes/{{ preview.tienda.id }}">
+    <input type="hidden" name="fecha" value="{{ preview.fecha.isoformat() }}">
+    {% if existente %}
+      <input type="hidden" name="recrear" value="1">
+      <button class="btn btn-danger" type="submit" {% if not preview.puede_generar %}disabled{% endif %}
+              onclick="return confirm('¿Regenerar el albarán local para esta fecha?')">
+        Recrear albarán local
+      </button>
+    {% else %}
+      <button class="btn btn-primary" type="submit" {% if not preview.puede_generar %}disabled{% endif %}>
+        Generar albarán local
+      </button>
+    {% endif %}
+  </form>
+
+  {% if existente %}
+  <form method="post" action="/franquicias/albaranes/{{ preview.tienda.id }}/holded">
+    <input type="hidden" name="fecha" value="{{ preview.fecha.isoformat() }}">
+    {% if existente.holded_doc_id %}<input type="hidden" name="recrear" value="1">{% endif %}
+    <button class="btn" style="background:#166534;color:#fff" type="submit"
+            {% if not preview.cliente_b2b or not preview.cliente_b2b.id_holded %}disabled{% endif %}
+            {% if existente.holded_doc_id %}onclick="return confirm('¿Crear un nuevo documento en Holded? El albarán ya tiene uno registrado.')"{% endif %}>
+      {% if existente.holded_doc_id %}Recrear en Holded{% else %}Enviar a Holded{% endif %}
+    </button>
+  </form>
+  {% endif %}
+  {% endif %}
+  {% if existente %}
+  <a href="/franquicias/albaranes/{{ existente.id }}/imprimir" target="_blank" class="btn" style="background:#eee">Imprimir</a>
+  {% if usuario.rol.value in ("JEFES", "ADMINISTRACION") %}
+  <a href="/franquicias/albaranes/{{ existente.id }}/editar" class="btn" style="background:#eee">Editar</a>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

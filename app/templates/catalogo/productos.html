@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block titulo %}Catálogo — Obrador Demo{% endblock %}
+{% block topbar %}Catálogo › Productos{% endblock %}
+
+{% block contenido %}
+{# Producto seleccionado (objeto completo) #}
+{% set psel = (productos | selectattr('id', 'equalto', sel) | first) if sel else None %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+  <h1 class="pagina-titulo" style="margin:0">Catálogo</h1>
+</div>
+
+<nav class="cat-tabs">
+  <a class="cat-tab activo" href="/catalogo/productos">Productos</a>
+  <a class="cat-tab" href="/catalogo/sabores">Sabores</a>
+</nav>
+
+{% if error %}<div class="alerta-error">{{ error }}</div>{% endif %}
+{% if guardado %}<div class="cat-flash">
+  <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+  Guardado
+</div>{% endif %}
+
+<div class="cat-layout">
+  <!-- ── Rail: lista de productos ── -->
+  <div class="cat-rail">
+    <div class="cat-rail-search">
+      <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="buscar-prod" placeholder="Buscar producto…" oninput="filtrarProductos(this.value)">
+    </div>
+    <div class="cat-prod-list" id="lista-prod">
+      {% for p in productos %}
+      <div class="cat-prod-row" data-nombre="{{ p.nombre | lower }}">
+        <a class="cat-prod-item {% if p.id == sel %}activo{% endif %} {% if not p.activo %}inactivo{% endif %}"
+           href="/catalogo/productos?sel={{ p.id }}">
+          <span class="nombre">{{ p.nombre }}</span>
+          <span class="punto" title="{{ 'Activo' if p.activo else 'Inactivo' }}"></span>
+        </a>
+        <div class="cat-prod-arrows">
+          <form method="post" action="/catalogo/productos/{{ p.id }}/subir">
+            <button type="submit" title="Subir" {% if loop.first %}disabled{% endif %}>▲</button>
+          </form>
+          <form method="post" action="/catalogo/productos/{{ p.id }}/bajar">
+            <button type="submit" title="Bajar" {% if loop.last %}disabled{% endif %}>▼</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="cat-rail-foot">
+      <button class="btn btn-primary btn-sm btn-full" onclick="document.getElementById('modal-nuevo').classList.add('abierto')">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo producto
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Panel: detalle del producto seleccionado ── -->
+  <div class="cat-panel">
+    {% if not psel %}
+    <div class="cat-empty">
+      <p>No hay productos todavía.</p>
+      <p style="margin-top:.5rem">Crea el primero con <strong>“Nuevo producto”</strong>.</p>
+    </div>
+    {% else %}
+    <div class="cat-panel-head">
+      <div>
+        <h2>{{ psel.nombre }}
+          <span class="badge {{ 'badge-activo' if psel.activo else 'badge-inactivo' }}" style="vertical-align:middle;margin-left:.4rem">
+            {{ 'Activo' if psel.activo else 'Inactivo' }}
+          </span>
+        </h2>
+        <div class="meta">
+          Caducidad {{ psel.dias_caducidad }} días · Entrega {{ psel.dias_hasta_entrega }} días
+          {% if psel.permite_porciones %} · Admite porciones{% endif %}
+        </div>
+      </div>
+      <div class="cat-panel-actions">
+        <button class="btn btn-sm" style="background:#eee"
+          onclick="abrirEditar({{ psel.id }}, '{{ psel.nombre }}', {{ psel.dias_caducidad }}, {{ psel.dias_hasta_entrega }}, {{ psel.permite_porciones | tojson }})">
+          <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          Editar
+        </button>
+        <form method="post" action="/catalogo/productos/{{ psel.id }}/toggle" style="display:inline">
+          <button class="btn btn-sm {{ 'btn-danger' if psel.activo else 'btn-primary' }}">
+            {{ 'Desactivar' if psel.activo else 'Activar' }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Precios -->
+    <div class="cat-section">
+      <div class="cat-section-title">Precios</div>
+      <form method="post" action="/catalogo/productos/{{ psel.id }}/precios">
+        <div class="precio-row head">
+          <span>PVP</span><span>B2B</span><span>Franquicia</span>
+        </div>
+        <div class="precio-row">
+          <div class="precio-cell">
+            <input type="text" name="pvp" value="{{ psel.precio_pvp if psel.precio_pvp is not none else '' }}" placeholder="—"><span class="eur">€</span>
+          </div>
+          <div class="precio-cell">
+            <input type="text" name="b2b" value="{{ psel.precio_b2b if psel.precio_b2b is not none else '' }}" placeholder="—"><span class="eur">€</span>
+          </div>
+          <div class="precio-cell">
+            <input type="text" name="fra" value="{{ psel.precio_franquicia if psel.precio_franquicia is not none else '' }}" placeholder="—"><span class="eur">€</span>
+          </div>
+        </div>
+        <div style="text-align:right;margin-top:1rem">
+          <button type="submit" class="btn btn-primary btn-sm">Guardar precios</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Sabores en este producto -->
+    <div class="cat-section">
+      <div class="cat-section-title">Sabores en este producto</div>
+      {% if not sabores_sel %}
+        <p style="color:#999;font-size:.88rem">Este producto no tiene sabores asignados. Asígnalos desde la pestaña <a href="/catalogo/sabores">Sabores</a>.</p>
+      {% else %}
+        {% for s in sabores_sel %}
+          <div class="sabor-row {% if s.out %}deshabilitado{% endif %}">
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <div class="cat-prod-arrows">
+                <form method="post" action="/catalogo/productos/{{ psel.id }}/sabor/{{ s.id }}/subir">
+                  <button type="submit" title="Subir" {% if s.primero %}disabled{% endif %}>▲</button>
+                </form>
+                <form method="post" action="/catalogo/productos/{{ psel.id }}/sabor/{{ s.id }}/bajar">
+                  <button type="submit" title="Bajar" {% if s.ultimo %}disabled{% endif %}>▼</button>
+                </form>
+              </div>
+              <span class="nombre">{{ s.nombre }}</span>
+            </div>
+            <div class="seg-grupo">
+              <div class="seg">
+                {% for flag, lbl, cls in [('produccion','Producción','on-prod'), ('encargo','Encargo','on-enc')] %}
+                <form method="post" action="/catalogo/productos/{{ psel.id }}/sabor/{{ s.id }}/toggle" style="display:inline">
+                  <input type="hidden" name="flag" value="{{ flag }}">
+                  <button type="submit" class="{{ cls if s[flag] else '' }}">{{ lbl }}</button>
+                </form>
+                {% endfor %}
+              </div>
+              <form method="post" action="/catalogo/productos/{{ psel.id }}/sabor/{{ s.id }}/toggle" class="seg seg-out">
+                <input type="hidden" name="flag" value="out">
+                <button type="submit" class="{{ 'on-out' if s.out else '' }}">Out</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal nuevo producto -->
+<div class="modal-overlay" id="modal-nuevo">
+  <div class="modal">
+    <h3>Nuevo producto</h3>
+    <form method="post" action="/catalogo/productos/crear">
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" name="nombre" required placeholder="Ej: TARTA" style="text-transform:uppercase">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+        <div class="form-group"><label>Días caducidad</label><input type="number" name="dias_caducidad" value="4" min="1"></div>
+        <div class="form-group"><label>Días hasta entrega</label><input type="number" name="dias_hasta_entrega" value="1" min="0"></div>
+      </div>
+      <div class="form-group"><label><input type="checkbox" name="permite_porciones"> Admite venta por porciones</label></div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-nuevo').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal editar producto -->
+<div class="modal-overlay" id="modal-editar">
+  <div class="modal">
+    <h3>Editar producto</h3>
+    <form method="post" id="form-editar">
+      <div class="form-group"><label>Nombre</label><input type="text" name="nombre" id="edit-nombre" required style="text-transform:uppercase"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+        <div class="form-group"><label>Días caducidad</label><input type="number" name="dias_caducidad" id="edit-cad" min="1"></div>
+        <div class="form-group"><label>Días hasta entrega</label><input type="number" name="dias_hasta_entrega" id="edit-ent" min="0"></div>
+      </div>
+      <div class="form-group"><label><input type="checkbox" name="permite_porciones" id="edit-porciones"> Admite venta por porciones</label></div>
+      <div class="modal-footer">
+        <button type="button" class="btn" onclick="document.getElementById('modal-editar').classList.remove('abierto')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function filtrarProductos(q) {
+    q = q.trim().toLowerCase();
+    document.querySelectorAll('#lista-prod .cat-prod-row').forEach(el => {
+      el.style.display = el.dataset.nombre.includes(q) ? '' : 'none';
+    });
+  }
+  function abrirEditar(id, nombre, cad, ent, permitePorciones) {
+    document.getElementById('form-editar').action = '/catalogo/productos/' + id + '/editar';
+    document.getElementById('edit-nombre').value = nombre;
+    document.getElementById('edit-cad').value = cad;
+    document.getElementById('edit-ent').value = ent;
+    document.getElementById('edit-porciones').checked = permitePorciones;
+    document.getElementById('modal-editar').classList.add('abierto');
+  }
+  document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('abierto'); }));
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block titulo %}Bandeja de pedidos — Obrador Demo{% endblock %}
+{% block topbar %}Pedidos{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Bandeja de pedidos</h1>
+  {% if usuario.puede_editar("pedidos") %}
+  <a href="/pedidos/crear" class="btn btn-primary">+ Nuevo pedido</a>
+  {% endif %}
+</div>
+
+<form method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+  <input type="date" name="fecha" value="{{ filtro_fecha }}" style="padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+  {# TIENDAS solo ve los pedidos de su tienda: el backend no le pasa lista y el filtro no se muestra #}
+  {% if tiendas %}
+  <select name="tienda_id" style="padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+    <option value="">Todas las tiendas</option>
+    {% for t in tiendas %}
+    <option value="{{ t.id }}" {% if filtro_tienda == t.id|string %}selected{% endif %}>{{ t.nombre }}</option>
+    {% endfor %}
+  </select>
+  {% endif %}
+  <button type="submit" class="btn btn-primary">Filtrar</button>
+  <a href="/pedidos/?fecha={{ manana }}" class="btn">📅 Pedidos para mañana</a>
+  {% if filtro_fecha or filtro_tienda %}
+  <a href="/pedidos/" class="btn">Limpiar</a>
+  {% endif %}
+</form>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Tipo</th>
+        <th>Cliente</th>
+        <th>Recogida</th>
+        <th>Horneado</th>
+        <th>Tienda</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pedidos %}
+      <tr>
+        <td style="font-weight:600;color:#555">#{{ p.id }}</td>
+        <td>
+          {% if p.tipo == "B2B" %}
+            {% if b2b_tipo_map.get(p.cliente_b2b_id) == "FRANQUICIA" %}
+              <span class="badge" style="background:#fef3c7;color:#92400e">FRANQUICIA</span>
+            {% else %}
+              <span class="badge badge-oficina">B2B</span>
+            {% endif %}
+          {% elif p.tipo == "TIENDA" %}<span class="badge" style="background:#e3f0ff;color:#1a5276">TIENDA</span>
+          {% else %}<span class="badge badge-activo">PART.</span>{% endif %}
+        </td>
+        <td>
+          {% if p.tipo == "B2B" %}{{ b2b_map.get(p.cliente_b2b_id, '—') }}
+          {% elif p.tipo == "PARTICULAR" %}{{ p.nombre_cliente or '—' }}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ p.fecha_recogida.strftime('%d/%m/%Y') if p.fecha_recogida else '—' }}</td>
+        <td>{{ p.fecha_horneado.strftime('%d/%m/%Y') if p.fecha_horneado else '—' }}</td>
+        <td>{{ tienda_map.get(p.tienda_id, '—') }}</td>
+        <td style="white-space:nowrap">
+          <a href="/pedidos/{{ p.id }}" class="btn btn-sm" style="background:#eee">Ver</a>
+          {% if p.tipo == "B2B" %}
+          <a href="/imprimir/pegatinas/{{ p.id }}" class="btn btn-sm btn-primary" target="_blank">🏷 Pegatinas</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" style="text-align:center;color:#aaa;padding:2rem">No hay pedidos{% if filtro_fecha %} para esa fecha{% endif %}.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

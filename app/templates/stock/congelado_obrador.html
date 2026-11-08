@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titulo %}Congelado en obrador — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Congelado en obrador{% endblock %}
+
+{% block contenido %}
+<style>
+  .co-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; flex-wrap:wrap; gap:.75rem }
+  .ps { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; margin-bottom:1rem }
+  .ps-head { padding:.65rem 1rem; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.09em; color:#fff }
+  .ps table { width:100%; border-collapse:collapse }
+  .ps thead th { padding:.45rem .8rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#94a3b8; text-align:center }
+  .ps thead th:first-child { text-align:left; padding-left:1rem }
+  .ps tbody tr { border-bottom:1px solid #f1f5f9 }
+  .ps tbody td { padding:.5rem .8rem; vertical-align:middle }
+  .ps tbody td:first-child { padding-left:1rem; font-weight:600; color:#1e293b; font-size:.9rem }
+  .n { width:80px; height:46px; border:1.5px solid #bfdbfe; border-radius:8px; text-align:center; font-size:1.1rem; font-weight:700; color:#0c4a6e; background:#fff }
+  .n:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 3px rgba(56,189,248,.2) }
+  .co-num { text-align:center; font-weight:700; color:#0c4a6e; font-size:1rem }
+  .pf-footer { display:flex; justify-content:flex-end; gap:.6rem; padding-top:.5rem }
+</style>
+
+<div class="co-header">
+  <h1 class="pagina-titulo" style="margin:0">❄ Congelado en obrador</h1>
+  <a href="/stock/" class="btn">← Stock</a>
+</div>
+
+{% if guardado %}
+<div style="background:#dcfce7;border:1px solid #86efac;color:#15803d;padding:.7rem 1rem;border-radius:8px;margin-bottom:1rem;font-weight:600">✓ Inventario guardado.</div>
+{% endif %}
+
+<div class="card" style="padding:.8rem 1rem;background:#e0f2fe;border:1px solid #7dd3fc;margin-bottom:1rem;font-size:.88rem;color:#0c4a6e">
+  Tartas congeladas que hay ahora mismo en el obrador. Solo aparecen las que están en la previsión de alguna
+  tienda de congelados (lo que de verdad se congela). Total actual: <strong>{{ total }}</strong> tartas.
+</div>
+
+{% if not secciones %}
+<div class="card" style="text-align:center;color:#94a3b8;padding:3rem">
+  <strong style="color:#475569;font-size:1rem;display:block">Sin roster de congeladas</strong>
+  <p style="margin-top:.4rem;font-size:.9rem">Ninguna tienda de congelados tiene objetivo de vitrina configurado todavía.</p>
+</div>
+{% else %}
+<form method="post" action="/stock/congelado-obrador">
+  {% for sec in secciones %}
+  <div class="ps">
+    <div class="ps-head" style="background:{{ sec.color }}"><span>{{ sec.nombre }}</span></div>
+    <table>
+      <thead><tr><th style="width:70%">Sabor</th><th style="width:30%">En congelador</th></tr></thead>
+      <tbody>
+        {% for fila in sec.filas %}
+        {% set k = fila.prod_id ~ '_' ~ fila.sabor_id %}
+        <tr>
+          <td>{{ fila.sabor }}</td>
+          <td style="text-align:center">
+            {% if puede_editar %}
+            <input class="n" type="number" name="ent_{{ k }}" value="{{ valores.get(k, 0) }}" min="0" max="999">
+            {% else %}
+            <span class="co-num">{{ valores.get(k, 0) }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+
+  {% if puede_editar %}
+  <div class="pf-footer">
+    <a href="/stock/" class="btn">Cancelar</a>
+    <button type="submit" class="btn btn-primary" style="min-height:44px;padding:.55rem 1.6rem">Guardar inventario</button>
+  </div>
+  {% endif %}
+</form>
+{% endif %}
+{% endblock %}

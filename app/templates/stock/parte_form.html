@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block titulo %}Nuevo parte de stock — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Nuevo parte{% endblock %}
+
+{% block contenido %}
+<style>
+  .pf-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.3rem; flex-wrap:wrap; gap:.75rem }
+
+  /* Cabecera del formulario */
+  .pf-meta { display:flex; gap:1.2rem; flex-wrap:wrap; align-items:flex-end }
+  .pf-meta label { display:block; font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; margin-bottom:.3rem }
+  .pf-meta input, .pf-meta select {
+    padding:.55rem .8rem; border:1px solid #ddd; border-radius:7px; font-size:.95rem; min-height:44px;
+  }
+  .pf-meta input:focus, .pf-meta select:focus { outline:2px solid #F5C842; border-color:#F5C842 }
+
+  /* Sección */
+  .ps { background:#fff; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.08); overflow:hidden; margin-bottom:1rem }
+  .ps-head {
+    padding:.65rem 1rem; font-size:.72rem; font-weight:800;
+    text-transform:uppercase; letter-spacing:.09em; color:#fff;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .ps-head.grande   { background:#1e3a5f }
+  .ps-head.pequena  { background:#2d6a4f }
+  .ps-head.tarrina  { background:#7c3d12 }
+  .ps-head.cookie   { background:#1a4068 }
+  .ps-head.otros    { background:#475569 }
+
+  /* Tabla interior */
+  .ps table { width:100%; border-collapse:collapse }
+  .ps thead th {
+    padding:.45rem .8rem; background:#f8fafc; border-bottom:1px solid #e2e8f0;
+    font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#94a3b8;
+    text-align:center;
+  }
+  .ps thead th:first-child { text-align:left; padding-left:1rem }
+  .ps tbody tr { border-bottom:1px solid #f1f5f9 }
+  .ps tbody tr:last-child { border-bottom:none }
+  .ps tbody tr:hover { background:#fafcff }
+  .ps tbody td { padding:.5rem .8rem; vertical-align:middle }
+  .ps tbody td:first-child { padding-left:1rem; font-weight:600; color:#1e293b; font-size:.9rem }
+
+  /* Sub-cabecera de tamaño dentro de Mini+Pequeña */
+  .ps-subtam {
+    font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#64748b;
+    text-align:center; padding:.2rem 0 .5rem;
+  }
+
+  /* Inputs numéricos grandes y táctiles */
+  .n { width:72px; height:46px; border:1.5px solid #e2e8f0; border-radius:8px; text-align:center; font-size:1.1rem; font-weight:700; color:#1e293b; background:#fff; transition:border-color .12s }
+  .n:focus { outline:none; border-color:#F5C842; box-shadow:0 0 0 3px rgba(245,200,66,.2) }
+  .n:hover { border-color:#bbb }
+  .n.porc { border-color:#bfdbfe; color:#1e40af }
+  .n.porc:focus { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15) }
+
+  /* Input descripción otros */
+  .otros-desc { width:100%; padding:.5rem .7rem; border:1.5px solid #e2e8f0; border-radius:7px; font-size:.88rem; min-height:44px }
+  .otros-desc:focus { outline:2px solid #F5C842; border-color:#F5C842 }
+
+  .pf-footer { display:flex; justify-content:flex-end; gap:.6rem; padding-top:.5rem }
+</style>
+
+<div class="pf-header">
+  <h1 class="pagina-titulo" style="margin:0">{% if editar %}Editar parte #{{ parte_id }}{% else %}Ficha de stock{% endif %}</h1>
+  <a href="{% if editar %}/stock/{{ parte_id }}{% else %}/stock/{% endif %}" class="btn">← Volver</a>
+</div>
+
+{% if error %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.8rem 1rem;border-radius:8px;margin-bottom:1rem">{{ error }}</div>
+{% endif %}
+
+{% if catalogo is none %}
+  <!-- JEFES/ADMINISTRACION: elegir tienda antes de generar la ficha -->
+  <div class="card" style="padding:1.4rem 1.2rem;margin-bottom:1.1rem">
+    <form method="get" action="/stock/nuevo" class="pf-meta">
+      <div>
+        <label>Tienda</label>
+        <select name="tienda_id" required style="min-width:220px" onchange="this.form.submit()">
+          <option value="">— Seleccionar tienda —</option>
+          {% for t in tiendas %}<option value="{{ t.id }}">{{ t.nombre }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="min-height:44px">Ver ficha →</button>
+    </form>
+    <p style="color:#94a3b8;font-size:.85rem;margin-top:.8rem">La ficha se genera a partir de la previsión de la tienda.</p>
+  </div>
+
+{% elif sin_prevision %}
+  <div class="card" style="padding:1.4rem 1.2rem;margin-bottom:1.1rem">
+    <div style="font-weight:700;color:#92400e;margin-bottom:.4rem">Sin previsión configurada</div>
+    <p style="color:#64748b;font-size:.9rem">
+      {{ nombre_sel or "Esta tienda" }} no tiene previsión de stock, así que no hay ficha que rellenar.
+      {% if usuario.puede_editar("stock.prevision") %}
+      Configúrala en <a href="/stock/prevision/{{ tienda_sel }}">Previsión</a>.
+      {% else %}Avisa a oficina para que la configure.{% endif %}
+    </p>
+    {% if usuario.rol.value != "TIENDAS" %}
+    <div style="margin-top:1rem"><a href="/stock/nuevo" class="btn">← Elegir otra tienda</a></div>
+    {% endif %}
+  </div>
+
+{% else %}
+<form method="post" action="{% if editar %}/stock/{{ parte_id }}/editar{% else %}/stock/nuevo{% endif %}">
+  <input type="hidden" name="tienda_id" value="{{ tienda_sel }}">
+
+  <!-- Cabecera: fecha + tienda -->
+  <div class="card" style="padding:1rem 1.2rem;margin-bottom:1.1rem">
+    <div class="pf-meta">
+      <div>
+        <label>Fecha</label>
+        <input type="date" name="fecha" value="{{ hoy }}" required {% if editar %}readonly{% endif %}>
+      </div>
+      <div>
+        <label>Tienda</label>
+        <div style="font-weight:700;font-size:.95rem;padding:.55rem 0;min-height:44px;display:flex;align-items:center;gap:.6rem">
+          {{ nombre_sel or usuario.tienda_nombre or "—" }}
+          {% if usuario.rol.value != "TIENDAS" %}<a href="/stock/nuevo" style="font-size:.8rem;font-weight:600">cambiar</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if es_congelados %}
+  <div class="card" style="padding:.8rem 1rem;background:#e0f2fe;border:1px solid #7dd3fc;margin-bottom:1.1rem;font-size:.88rem;color:#0c4a6e">
+    ❄ Parte de <strong>vitrina</strong>. Cuenta lo que hay en vitrina; al guardar verás la descongelación de esta noche.
+    El congelador se cuenta en el <a href="/stock/congelador/nuevo?tienda_id={{ tienda_sel }}" style="font-weight:700">parte de congeladas</a>.
+  </div>
+  {% endif %}
+
+  <!-- ── Una sección por producto (cualquier producto nuevo genera la suya) ── -->
+  {% for sec in catalogo %}
+  <div class="ps">
+    <div class="ps-head" style="background:{{ sec.color }}">
+      <span>{{ sec.nombre }}</span>
+      {% if sec.permite_porciones %}
+      <span style="opacity:.7;font-weight:400;font-size:.68rem">Enteras · Porciones</span>
+      {% endif %}
+    </div>
+    <table>
+      <thead>
+        <tr>
+          {% if sec.permite_porciones %}
+          <th style="width:50%">Sabor</th>
+          <th style="width:25%">Enteras</th>
+          <th style="width:25%">Porciones</th>
+          {% else %}
+          <th style="width:70%">Sabor</th>
+          <th style="width:30%">Unidades</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in sec.filas %}
+        {% set k = fila.prod_id ~ '_' ~ fila.sabor_id %}
+        {% set v = valores.get(k, [0, 0]) %}
+        <tr>
+          <td>{{ fila.sabor }}</td>
+          <td style="text-align:center">
+            <input class="n" type="number" name="ent_{{ k }}" value="{{ v[0] }}" min="0" max="999">
+          </td>
+          {% if sec.permite_porciones %}
+          <td style="text-align:center">
+            <input class="n porc" type="number" name="rac_{{ k }}" value="{{ v[1] }}" min="0" max="999">
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr style="background:#f8fafc;border-top:2px solid #cbd5e1">
+          <td style="font-weight:700">Sobrante</td>
+          <td style="text-align:center" {% if sec.permite_porciones %}colspan="2"{% endif %}>
+            <input class="n" type="number" name="sobrante_{{ sec.prod_id }}" value="{{ sobrantes.get(sec.prod_id, 0) }}" min="0" max="999">
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  {% endfor %}
+
+  <div class="pf-footer">
+    <a href="{% if editar %}/stock/{{ parte_id }}{% else %}/stock/{% endif %}" class="btn">Cancelar</a>
+    <button type="submit" class="btn btn-primary" style="min-height:44px;padding:.55rem 1.6rem">{% if editar %}Guardar cambios{% else %}Guardar parte{% endif %}</button>
+  </div>
+
+</form>
+{% endif %}
+{% endblock %}

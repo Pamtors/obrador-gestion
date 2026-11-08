@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista por tienda — Obrador Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 11px; background: #fff; }
+
+    .controls {
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: #f8f8f8;
+      border-bottom: 1px solid #ddd;
+    }
+    .btn-print { padding: 7px 16px; background: #2563eb; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600; }
+    .btn-manana { padding: 7px 14px; background: #16a34a; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; }
+    .btn-back { padding: 7px 12px; background: #eee; border: 1px solid #ccc; border-radius: 5px; text-decoration: none; color: #333; font-size: 13px; }
+    .filtros { display: flex; gap: 6px; align-items: center; }
+    .filtros input[type="date"] { padding: 5px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; }
+    .filtros button { padding: 5px 10px; background: #555; color: #fff; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; }
+
+    .contenido { padding: 6mm 8mm; }
+
+    /* ── Bloque de tienda ─────────────────────────── */
+    .tienda-bloque { page-break-after: always; }
+    .tienda-bloque:last-child { page-break-after: avoid; }
+
+    .tienda-header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      margin-bottom: 4mm;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tienda-header .badge-count {
+      background: rgba(255,255,255,.2);
+      font-size: 10px;
+      padding: 1px 8px;
+      border-radius: 10px;
+      font-weight: 400;
+    }
+
+    .pedido-bloque {
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      margin-bottom: 3mm;
+      page-break-inside: avoid;
+    }
+
+    .pedido-header {
+      background: #f5f5f5;
+      padding: 4px 8px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+      flex-wrap: wrap;
+    }
+
+    .pedido-header .ref { font-weight: 700; font-size: 12px; }
+    .pedido-header span { font-size: 10.5px; }
+
+    .badge-tipo { font-size: 9px; padding: 1px 6px; border-radius: 8px; font-weight: 700; text-transform: uppercase; }
+    .badge-b2b { background: #dbeafe; color: #1e40af; }
+    .badge-part { background: #dcfce7; color: #166534; }
+    .badge-tienda { background: #f3e8ff; color: #6b21a8; }
+
+    table { width: 100%; border-collapse: collapse; }
+    td, th { padding: 3px 8px; font-size: 10.5px; border-bottom: 1px solid #eee; }
+    th { background: #fafafa; font-weight: 600; text-align: left; }
+    tr:last-child td { border-bottom: none; }
+
+    .nota-pedido { padding: 3px 8px; color: #666; font-style: italic; border-top: 1px solid #eee; font-size: 10px; }
+
+    /* Fecha de recogida secundaria dentro de tienda */
+    .fecha-recogida-label {
+      font-size: 10px;
+      color: #888;
+      background: #f9f9f9;
+      padding: 2px 8px;
+      border-bottom: 1px solid #eee;
+      font-style: italic;
+    }
+
+    /* ── Móvil: solo la barra de controles; el pliego impreso no se toca ── */
+    @media (max-width: 900px) {
+      .filtros { flex: 1 1 100%; }
+      /* Por debajo de 16px Safari iOS hace auto-zoom al enfocar y ya no vuelve */
+      .filtros input[type="date"], .filtros button { font-size: 16px; min-height: 44px; }
+      .btn-print, .btn-manana, .btn-back { font-size: 15px; min-height: 44px; display: inline-flex; align-items: center; }
+      .contenido { padding: 3mm 2mm; font-size: 13px; }
+    }
+
+    @media print {
+      .controls { display: none; }
+      body { margin: 0; }
+      .contenido { padding: 4mm 6mm; }
+    }
+
+    @page { size: A4 portrait; margin: 8mm; }
+  </style>
+</head>
+<body>
+
+<div class="controls">
+  <button class="btn-print" onclick="window.print()">🖨 Imprimir (Ctrl+P)</button>
+  <a href="/imprimir/" class="btn-back">← Centro</a>
+  <a href="/imprimir/pedidos-tiendas?manana=1" class="btn-manana">📅 Recogida mañana</a>
+  <div class="filtros">
+    <form method="get" action="/imprimir/pedidos-tiendas">
+      <label style="font-size:11px">Desde:</label>
+      <input type="date" name="fecha_desde" value="{{ filtro_desde }}">
+      <label style="font-size:11px">Hasta:</label>
+      <input type="date" name="fecha_hasta" value="{{ filtro_hasta }}">
+      <button type="submit">Filtrar</button>
+    </form>
+  </div>
+</div>
+
+<div class="contenido">
+  {% if tiendas %}
+    {% for nombre_tienda, pedidos in tiendas.items() | sort %}
+    <div class="tienda-bloque">
+      <div class="tienda-header">
+        🏪 {{ nombre_tienda }}
+        <span class="badge-count">{{ pedidos|length }} pedido{{ 's' if pedidos|length != 1 }}</span>
+      </div>
+
+      {% for p in pedidos %}
+      <div class="pedido-bloque">
+        <div class="pedido-header">
+          <span class="ref">#{{ p.id }}</span>
+          <span class="badge-tipo {% if p.tipo == 'B2B' %}badge-b2b{% elif p.tipo == 'PARTICULAR' %}badge-part{% else %}badge-tienda{% endif %}">
+            {{ p.tipo }}
+          </span>
+          <span><strong>{{ p.nombre_cliente or '—' }}</strong></span>
+          {% if p.telefono_cliente %}<span>📞 {{ p.telefono_cliente }}</span>{% endif %}
+          <span>Recogida: <strong>{{ p.fecha_recogida.strftime('%d/%m/%Y') }}</strong></span>
+          <span>Horn.: <strong>{{ p.fecha_horneado.strftime('%d/%m') if p.fecha_horneado else '—' }}</strong></span>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Producto</th><th>Sabor</th><th>Cant.</th><th>Comentario</th></tr>
+          </thead>
+          <tbody>
+            {% for l in p.lineas %}
+            <tr>
+              <td>{{ l.producto }}</td>
+              <td>{{ l.sabor }}</td>
+              <td style="text-align:center;font-weight:700">{{ l.cantidad }}</td>
+              <td style="color:#666">{{ l.comentario or '' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if p.comentario %}
+        <div class="nota-pedido">📝 {{ p.comentario }}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% else %}
+  <p style="color:#aaa;text-align:center;padding:3rem">No hay pedidos para mostrar.</p>
+  {% endif %}
+</div>
+
+</body>
+</html>

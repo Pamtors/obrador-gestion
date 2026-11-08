@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}Albaranes franquicias{% endblock %}
+{% block topbar %}Franquicias{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Albaranes de franquicias — {{ fecha.strftime('%d/%m/%Y') }}</h1>
+  <form method="get" action="/franquicias/albaranes" style="display:flex;gap:.5rem;align-items:center">
+    <input type="date" name="fecha" value="{{ fecha.isoformat() }}" onchange="this.form.submit()">
+  </form>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <table>
+    <thead>
+      <tr><th>Franquicia</th><th>Estado</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for f in filas %}
+      <tr>
+        <td>{{ f.tienda_nombre }}</td>
+        <td>
+          {% if f.estado == 'en_holded' %}
+            <span style="font-size:.8rem;color:#166534;font-weight:600">✓ En Holded</span>
+          {% elif f.estado == 'generado' %}
+            <span style="font-size:.8rem;color:#1e40af;font-weight:600">Generado (local)</span>
+          {% else %}
+            <span style="font-size:.8rem;color:#92400e;font-weight:600">Pendiente</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right">
+          <a href="/franquicias/albaranes/{{ f.tienda_id }}?fecha={{ fecha.isoformat() }}" class="btn btn-sm"
+             style="font-size:.8rem;padding:3px 10px;background:#2563eb;color:#fff">
+            {% if f.albaran_id %}Ver{% else %}Previsualizar{% endif %}
+          </a>
+          {% if f.albaran_id %}
+          <a href="/franquicias/albaranes/{{ f.albaran_id }}/imprimir" target="_blank" class="btn btn-sm"
+             style="font-size:.8rem;padding:3px 10px;background:#eee">Imprimir</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="3" style="text-align:center;color:#aaa;padding:2rem">
+          No hay franquicias con reparto en esta fecha.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

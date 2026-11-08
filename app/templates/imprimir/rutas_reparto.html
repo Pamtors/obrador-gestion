@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Rutas de reparto — Obrador Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 13px; background: #f5f5f5; }
+
+    /* ── CONTROLES ─────────────────────────────────────────── */
+    .controls {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .controls h1 { font-size: 15px; font-weight: 700; margin-right: 8px; }
+    .btn { padding: 6px 14px; border-radius: 5px; border: none; cursor: pointer; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-block; }
+    .btn-white { background: #fff; color: #1e3a5f; }
+    .btn-green { background: #16a34a; color: #fff; }
+    .btn-blue { background: #2563eb; color: #fff; }
+    .btn-red { background: #dc2626; color: #fff; font-size: 11px; padding: 4px 8px; }
+    .btn-sm { font-size: 11px; padding: 3px 8px; }
+    input[type="date"] { padding: 5px 8px; border: none; border-radius: 4px; font-size: 12px; }
+
+    /* ── LAYOUT ────────────────────────────────────────────── */
+    .page { padding: 16px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── ZONAS DISPONIBLES ─────────────────────────────────── */
+    .zonas-panel {
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .zonas-panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #888; margin-bottom: 10px; }
+    .zonas-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+    .zona-chip {
+      background: #f0f4ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 6px;
+      padding: 8px 12px;
+      min-width: 160px;
+    }
+    .zona-chip.asignada { background: #f0fdf4; border-color: #86efac; opacity: .7; }
+    .zona-chip h3 { font-size: 12px; font-weight: 700; color: #1e3a5f; margin-bottom: 4px; }
+    .zona-chip .n-paradas { font-size: 11px; color: #888; margin-bottom: 6px; }
+    .zona-chip select { width: 100%; padding: 4px 6px; border: 1px solid #c7d2fe; border-radius: 4px; font-size: 11px; }
+
+    /* ── RUTAS ─────────────────────────────────────────────── */
+    .rutas-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .rutas-header h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #888; }
+    .rutas-grid { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+    .ruta-card {
+      background: #fff;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      min-width: 280px;
+      flex: 1;
+      max-width: 400px;
+    }
+    .ruta-header {
+      padding: 10px 12px;
+      background: #1e3a5f;
+      color: #fff;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ruta-nombre { font-weight: 700; font-size: 13px; flex: 1; }
+    .ruta-nombre-input {
+      flex: 1;
+      min-width: 0;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-family: inherit;
+    }
+    .ruta-nombre-input::placeholder { color: rgba(255,255,255,.55); }
+    .ruta-nombre-input:focus { outline: none; background: rgba(255,255,255,.22); border-color: #fff; }
+    .ruta-body { padding: 8px; min-height: 80px; }
+    .parada-row {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 5px;
+      padding: 7px 8px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .parada-num {
+      background: #1e3a5f;
+      color: #fff;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .parada-info { flex: 1; min-width: 0; }
+    .parada-cliente { font-weight: 700; font-size: 12px; }
+    .parada-zona { font-size: 10px; color: #6366f1; background: #eef2ff; padding: 1px 5px; border-radius: 8px; display: inline-block; margin-bottom: 2px; }
+    .parada-detalle { font-size: 10.5px; color: #666; line-height: 1.4; }
+    .parada-btns { display: flex; flex-direction: column; gap: 2px; }
+    .parada-btns button {
+      background: #eee;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 1px 5px;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .parada-btns button:hover { background: #d1d5db; }
+    .ruta-vacia { color: #aaa; text-align: center; padding: 20px 12px; font-size: 11px; }
+    .ruta-footer { padding: 8px 12px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .ruta-footer small { color: #888; font-size: 10.5px; }
+
+    /* ── PRINT ─────────────────────────────────────────────── */
+    .print-output { display: none; }
+
+    @media print {
+      .controls, .page { display: none !important; }
+      .print-output { display: block !important; }
+
+      body { background: #fff; font-family: Arial, sans-serif; font-size: 11px; }
+
+      .pr-ruta { page-break-after: always; padding: 8mm 10mm; }
+      .pr-ruta:last-child { page-break-after: avoid; }
+
+      .pr-titulo {
+        background: #1e3a5f;
+        color: #fff;
+        padding: 6px 10px;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 2mm;
+        border-radius: 3px;
+      }
+      .pr-subtitulo { font-size: 10px; color: #666; margin-bottom: 5mm; }
+      .pr-parada { border: 1px solid #ccc; border-radius: 3px; margin-bottom: 3mm; page-break-inside: avoid; }
+      .pr-parada-header {
+        background: #f5f5f5;
+        padding: 4px 8px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        border-bottom: 1px solid #ccc;
+      }
+      .pr-num {
+        background: #1e3a5f;
+        color: #fff;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .pr-cliente { font-weight: 700; font-size: 12px; flex: 1; }
+      .pr-zona-badge { font-size: 9px; color: #444; background: #eee; padding: 1px 6px; border-radius: 8px; }
+      .pr-body { padding: 4px 8px 6px 36px; font-size: 10.5px; color: #444; line-height: 1.6; }
+    }
+
+    @page { size: A4 portrait; margin: 8mm; }
+  </style>
+</head>
+<body>
+
+<!-- Controles (solo pantalla) -->
+<div class="controls">
+  <h1>🚚 Rutas de reparto</h1>
+  <form method="get" action="/imprimir/rutas" style="display:flex;gap:6px;align-items:center">
+    <input type="date" name="fecha" value="{{ fecha }}">
+    <button type="submit" class="btn btn-white">Ver</button>
+  </form>
+  <a href="/imprimir/rutas?fecha={{ manana }}" class="btn btn-green">📅 Mañana</a>
+  <span style="font-size:11px;opacity:.8">{{ fecha_display }}</span>
+  <span id="estado-guardado" style="font-size:11px;opacity:.7;margin-left:4px">
+    {% if guardado_en %}✓ Guardado a las {{ guardado_en }}{% endif %}
+  </span>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="btn btn-white" onclick="addRoute()">+ Nueva ruta</button>
+    <button class="btn btn-blue" onclick="imprimirRutas()">🖨 Imprimir</button>
+    <a href="/imprimir/" class="btn btn-white">← Centro</a>
+  </div>
+</div>
+
+<!-- Builder (solo pantalla) -->
+<div class="page" id="builder">
+
+  <!-- Zonas disponibles -->
+  <div class="zonas-panel" id="zonas-panel">
+    <h2>Zonas disponibles</h2>
+    <div class="zonas-grid" id="zonas-grid"></div>
+  </div>
+
+  <!-- Rutas -->
+  <div class="rutas-header">
+    <h2>Rutas</h2>
+  </div>
+  <div class="rutas-grid" id="rutas-grid">
+    <p style="color:#aaa;font-size:12px;padding:12px">Pulsa "+ Nueva ruta" para empezar.</p>
+  </div>
+
+</div>
+
+<!-- Salida de impresión (oculta en pantalla, visible al imprimir) -->
+<div class="print-output" id="print-output"></div>
+
+<script>
+const DATA = {{ zonas_json | safe }};
+const FECHA_DISPLAY = "{{ fecha_display }}";
+const FECHA = "{{ fecha }}";
+const PLAN_GUARDADO = {{ plan_json | safe }};
+
+// ── Estado ───────────────────────────────────────────────────
+let rutas = [];
+let rutaCounter = 0;
+let zonaAsignacion = {};
+let _saveTimer = null;
+
+// Inicializar desde plan guardado o desde cero
+if (PLAN_GUARDADO && PLAN_GUARDADO.rutas) {
+  rutas = PLAN_GUARDADO.rutas;
+  rutaCounter = PLAN_GUARDADO.ruta_counter || rutas.length;
+  zonaAsignacion = PLAN_GUARDADO.zona_asignacion || {};
+  // Asegurarse de que todas las zonas actuales están en el mapa
+  Object.keys(DATA).forEach(z => {
+    if (!(z in zonaAsignacion)) zonaAsignacion[z] = null;
+  });
+} else {
+  Object.keys(DATA).forEach(z => { zonaAsignacion[z] = null; });
+}
+
+// ── Render zonas disponibles ─────────────────────────────────
+function renderZonas() {
+  const grid = document.getElementById('zonas-grid');
+  grid.innerHTML = '';
+  Object.entries(DATA).forEach(([zona, paradas]) => {
+    const asignada = zonaAsignacion[zona] !== null;
+    const rutaActual = asignada ? zonaAsignacion[zona] : '';
+    const chip = document.createElement('div');
+    chip.className = 'zona-chip' + (asignada ? ' asignada' : '');
+    chip.innerHTML = `
+      <h3>📍 ${zona}</h3>
+      <div class="n-paradas">${paradas.length} parada${paradas.length !== 1 ? 's' : ''}</div>
+      <select onchange="asignarZona('${zona}', this.value)">
+        <option value="">— Sin asignar —</option>
+        ${rutas.map(r => `<option value="${r.id}" ${rutaActual == r.id ? 'selected' : ''}>${r.nombre}</option>`).join('')}
+      </select>
+    `;
+    grid.appendChild(chip);
+  });
+}
+
+// ── Render rutas ─────────────────────────────────────────────
+function renderRutas() {
+  const grid = document.getElementById('rutas-grid');
+  if (rutas.length === 0) {
+    grid.innerHTML = '<p style="color:#aaa;font-size:12px;padding:12px">Pulsa "+ Nueva ruta" para empezar.</p>';
+    return;
+  }
+  grid.innerHTML = '';
+  rutas.forEach(ruta => {
+    const card = document.createElement('div');
+    card.className = 'ruta-card';
+
+    const zonasEnRuta = Object.entries(zonaAsignacion)
+      .filter(([z, rid]) => rid === ruta.id)
+      .map(([z]) => z);
+
+    const paradasHTML = ruta.paradas.length === 0
+      ? `<div class="ruta-vacia">Sin paradas.<br>Asigna zonas desde el panel superior.</div>`
+      : ruta.paradas.map((p, idx) => `
+        <div class="parada-row">
+          <div class="parada-num">${idx + 1}</div>
+          <div class="parada-info">
+            <div class="parada-cliente">${p.cliente}</div>
+            <div><span class="parada-zona">${p.zona}</span></div>
+            <div class="parada-detalle">
+              ${p.direccion ? '📍 ' + p.direccion + '<br>' : ''}
+              ${p.telefono ? '📞 ' + p.telefono + (p.ventana ? ' · ' + p.ventana : '') + '<br>' : (p.ventana ? '🕐 ' + p.ventana + '<br>' : '')}
+              ${p.lineas ? '🍰 ' + p.lineas : ''}
+              ${p.comentario ? '<br>📝 ' + p.comentario : ''}
+            </div>
+          </div>
+          <div class="parada-btns">
+            <button onclick="moverParada(${ruta.id}, ${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
+            <button onclick="moverParada(${ruta.id}, ${idx}, 1)" ${idx === ruta.paradas.length - 1 ? 'disabled' : ''}>▼</button>
+          </div>
+        </div>
+      `).join('');
+
+    card.innerHTML = `
+      <div class="ruta-header">
+        <input class="ruta-nombre-input" value="${ruta.nombre.replace(/"/g, '&quot;')}"
+               title="Nombre de la ruta / repartidor"
+               placeholder="Ruta / repartidor"
+               onchange="renombrarRuta(${ruta.id}, this.value)">
+        <span style="font-size:10px;opacity:.8">${ruta.paradas.length} parada${ruta.paradas.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="ruta-body">${paradasHTML}</div>
+      <div class="ruta-footer">
+        <small>Zonas: ${zonasEnRuta.length > 0 ? zonasEnRuta.join(', ') : '—'}</small>
+        <button class="btn btn-red btn-sm" onclick="borrarRuta(${ruta.id})">Borrar ruta</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function render() {
+  renderZonas();
+  renderRutas();
+}
+
+// ── Acciones ─────────────────────────────────────────────────
+function addRoute() {
+  rutaCounter++;
+  rutas.push({ id: rutaCounter, nombre: `Ruta ${rutaCounter}`, paradas: [] });
+  render();
+  guardarDebounced();
+}
+
+function renombrarRuta(rutaId, nuevo) {
+  const ruta = rutas.find(r => r.id === rutaId);
+  if (!ruta) return;
+  ruta.nombre = nuevo.trim() || `Ruta ${rutaId}`;
+  render();  // refresca los selects de zona para mostrar el nuevo nombre
+  guardarDebounced();
+}
+
+function asignarZona(zona, rutaIdStr) {
+  const rutaId = rutaIdStr ? parseInt(rutaIdStr) : null;
+  const rutaAnteriorId = zonaAsignacion[zona];
+
+  if (rutaAnteriorId !== null) {
+    const rutaAnt = rutas.find(r => r.id === rutaAnteriorId);
+    if (rutaAnt) rutaAnt.paradas = rutaAnt.paradas.filter(p => p.zona !== zona);
+  }
+
+  zonaAsignacion[zona] = rutaId;
+
+  if (rutaId !== null) {
+    const ruta = rutas.find(r => r.id === rutaId);
+    if (ruta) {
+      const nuevasParadas = DATA[zona].map(p => ({ ...p, zona }));
+      ruta.paradas.push(...nuevasParadas);
+    }
+  }
+
+  render();
+  guardarDebounced();
+}
+
+function moverParada(rutaId, idx, dir) {
+  const ruta = rutas.find(r => r.id === rutaId);
+  if (!ruta) return;
+  const nuevoIdx = idx + dir;
+  if (nuevoIdx < 0 || nuevoIdx >= ruta.paradas.length) return;
+  [ruta.paradas[idx], ruta.paradas[nuevoIdx]] = [ruta.paradas[nuevoIdx], ruta.paradas[idx]];
+  render();
+  guardarDebounced();
+}
+
+function borrarRuta(rutaId) {
+  Object.keys(zonaAsignacion).forEach(z => {
+    if (zonaAsignacion[z] === rutaId) zonaAsignacion[z] = null;
+  });
+  rutas = rutas.filter(r => r.id !== rutaId);
+  render();
+  guardarDebounced();
+}
+
+// ── Imprimir ─────────────────────────────────────────────────
+function imprimirRutas() {
+  const rutasConParadas = rutas.filter(r => r.paradas.length > 0);
+  if (rutasConParadas.length === 0) {
+    alert('No hay rutas con paradas para imprimir.');
+    return;
+  }
+
+  const html = rutasConParadas.map(ruta => `
+    <div class="pr-ruta">
+      <div class="pr-titulo">🚚 ${ruta.nombre}</div>
+      <div class="pr-subtitulo">${FECHA_DISPLAY} &nbsp;·&nbsp; ${ruta.paradas.length} parada${ruta.paradas.length !== 1 ? 's' : ''}</div>
+      ${ruta.paradas.map((p, idx) => `
+        <div class="pr-parada">
+          <div class="pr-parada-header">
+            <div class="pr-num">${idx + 1}</div>
+            <div class="pr-cliente">${p.cliente}</div>
+            <span class="pr-zona-badge">${p.zona}</span>
+            ${p.ubicacion === 'RESTAURANTE' ? '<span class="pr-zona-badge" style="background:#d1fae5;color:#065f46">Entrega restaurante</span>' : ''}
+          </div>
+          <div class="pr-body">
+            ${p.direccion ? '📍 ' + p.direccion + '<br>' : ''}
+            ${p.telefono ? '📞 ' + p.telefono + (p.ventana ? '&nbsp;&nbsp;🕐 ' + p.ventana : '') + '<br>' : (p.ventana ? '🕐 ' + p.ventana + '<br>' : '')}
+            ${p.lineas ? '🍰 ' + p.lineas + '<br>' : ''}
+            ${p.comentario ? '📝 ' + p.comentario : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+
+  document.getElementById('print-output').innerHTML = html;
+  window.print();
+}
+
+// ── Auto-guardado ────────────────────────────────────────────
+function guardar() {
+  const plan = { rutas, ruta_counter: rutaCounter, zona_asignacion: zonaAsignacion };
+  const estado = document.getElementById('estado-guardado');
+  estado.textContent = '⏳ Guardando...';
+  fetch('/imprimir/rutas/guardar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fecha: FECHA, plan })
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      const ahora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      estado.textContent = `✓ Guardado a las ${ahora}`;
+    } else {
+      estado.textContent = '⚠ Error al guardar';
+    }
+  }).catch(() => { estado.textContent = '⚠ Error al guardar'; });
+}
+
+function guardarDebounced() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(guardar, 800);
+}
+
+// ── Init ─────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>

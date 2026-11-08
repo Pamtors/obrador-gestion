@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block titulo %}Registrar merma — Obrador Demo{% endblock %}
+{% block topbar %}Stock › Nueva merma{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Registrar merma</h1>
+  <a href="/stock/mermas/" class="btn">← Volver</a>
+</div>
+
+{% if error %}
+<div class="card" style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:.8rem 1rem;margin-bottom:1rem">{{ error }}</div>
+{% endif %}
+
+<div class="card" style="padding:1.5rem;max-width:600px">
+  <form method="post" action="/stock/mermas/nuevo">
+    <div style="display:grid;gap:1rem">
+
+      <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px">
+          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.3rem">Fecha</label>
+          <input type="date" name="fecha" value="{{ hoy }}" required
+                 style="width:100%;padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+        </div>
+        <div style="flex:1;min-width:160px">
+          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.3rem">Tienda</label>
+          {% if usuario.rol.value != "TIENDAS" %}
+          <select name="tienda_id" required style="width:100%;padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+            <option value="">— Seleccionar —</option>
+            {% for t in tiendas %}
+            <option value="{{ t.id }}">{{ t.nombre }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <input type="hidden" name="tienda_id" value="{{ usuario.tienda_id }}">
+          <span style="font-size:.95rem;padding:.5rem 0;display:block">{{ usuario.tienda_nombre or "—" }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.3rem">Producto</label>
+        <select id="sel-producto" name="producto_id" required
+                style="width:100%;padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px"
+                onchange="actualizarSabores()">
+          <option value="">— Seleccionar producto —</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.3rem">Sabor</label>
+        <select id="sel-sabor" name="sabor_id" required
+                style="width:100%;padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+          <option value="">— primero elige producto —</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.3rem">Cantidad</label>
+          <input type="number" name="cantidad" min="1" value="1" required
+                 style="width:100%;padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+        </div>
+        <div style="flex:2;min-width:200px">
+          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.3rem">Motivo</label>
+          <select name="motivo" required style="width:100%;padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+            {% for m in motivos %}
+            <option value="{{ m }}">{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.3rem">Comentario <small style="font-weight:400;color:#888">(opcional)</small></label>
+        <input type="text" name="comentario" maxlength="300"
+               style="width:100%;padding:.5rem .8rem;border:1px solid #ddd;border-radius:6px">
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.5rem">
+      <a href="/stock/mermas/" class="btn">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar merma</button>
+    </div>
+  </form>
+</div>
+
+<script>
+// CAT: prod_nombre → sabor_nombre → {prod_id, sabor_id, permite_porciones}
+const CAT = {{ catalogo | tojson }};
+
+function actualizarSabores() {
+  const sel = document.getElementById('sel-producto');
+  const prodNombre = sel.options[sel.selectedIndex].text;
+  const selSabor = document.getElementById('sel-sabor');
+
+  selSabor.innerHTML = '<option value="">— seleccionar sabor —</option>';
+
+  if (!sel.value || !CAT[prodNombre]) return;
+
+  const sabores = CAT[prodNombre];
+  for (const [saborNombre, item] of Object.entries(sabores)) {
+    const opt = document.createElement('option');
+    opt.value = item.sabor_id;
+    opt.text = saborNombre;
+    selSabor.appendChild(opt);
+  }
+}
+
+// Poblar options de productos con sus prod_id reales
+(function() {
+  const sel = document.getElementById('sel-producto');
+  sel.innerHTML = '<option value="">— Seleccionar producto —</option>';
+  for (const [prodNombre, sabores] of Object.entries(CAT)) {
+    const firstSabor = Object.values(sabores)[0];
+    if (!firstSabor) continue;
+    const opt = document.createElement('option');
+    opt.value = firstSabor.prod_id;
+    opt.text = prodNombre;
+    sel.appendChild(opt);
+  }
+})();
+</script>
+{% endblock %}

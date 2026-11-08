@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block titulo %}Centro de impresión — Obrador Demo{% endblock %}
+{% block topbar %}Impresión{% endblock %}
+
+{% block contenido %}
+<h1 class="pagina-titulo">Centro de impresión</h1>
+
+<!-- Acceso rápido -->
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card-titulo" style="display:flex;align-items:center;gap:.5rem">⚡ Acceso rápido · Mañana</div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+    <a href="/imprimir/pedidos?manana=1" class="btn btn-secondary">📋 Lista de pedidos</a>
+    <a href="/imprimir/pedidos-tiendas?manana=1" class="btn btn-secondary">🏪 Lista por tienda</a>
+    <a href="/imprimir/pedidos?manana=1&tipo=B2B" class="btn btn-secondary">🍽 Lista B2B</a>
+    <a href="/imprimir/pegatinas/dia?fecha={{ manana }}" class="btn btn-secondary">🏷 Pegatinas B2B</a>
+    <a href="/imprimir/rutas?fecha={{ manana }}" class="btn btn-secondary">🚚 Rutas de reparto</a>
+    <a href="/stock/envios/?fecha={{ manana }}" class="btn btn-secondary">📦 Fichas de envío</a>
+  </div>
+</div>
+
+<!-- Tarjetas generales -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1.1rem">
+
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">🏷</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Pegatinas por pedido</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Abre un pedido concreto y genera sus pegatinas.</p>
+    <a href="/pedidos/" class="btn btn-secondary btn-full">Ir a pedidos</a>
+  </div>
+
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">📋</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Lista de pedidos</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Lista imprimible agrupada por día de recogida.</p>
+    <a href="/imprimir/pedidos" class="btn btn-primary btn-full">Abrir lista</a>
+  </div>
+
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">🏪</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Lista por tienda</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Una hoja A4 por tienda con todos sus pedidos.</p>
+    <a href="/imprimir/pedidos-tiendas" class="btn btn-primary btn-full">Abrir lista</a>
+  </div>
+
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">🍽</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Lista B2B</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Solo pedidos de restaurantes y empresas.</p>
+    <a href="/imprimir/pedidos?tipo=B2B" class="btn btn-primary btn-full">Abrir lista</a>
+  </div>
+
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">🏷</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Pegatinas B2B por día</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Pegatinas de pedidos B2B, imprimibles en A4.</p>
+    <div style="display:flex;gap:.5rem">
+      <a href="/imprimir/pegatinas/dia" class="btn btn-primary" style="flex:1">Pegatinas mañana</a>
+      <a href="/imprimir/pegatinas/config" class="btn btn-secondary">⚙ Config</a>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">📦</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Envíos</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Ficha por tienda con lo que se envía (previsión − stock) y los pedidos.</p>
+    <a href="/stock/envios/" class="btn btn-primary btn-full">Abrir envíos</a>
+  </div>
+
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">🚚</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Rutas de reparto</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Planifica y ordena las rutas por zonas e imprime una hoja por repartidor.</p>
+    <a href="/imprimir/rutas" class="btn btn-primary btn-full">Planificar rutas</a>
+  </div>
+
+  {% if usuario.puede_servicio("franquicias") %}
+  <div class="card" style="text-align:center;display:flex;flex-direction:column">
+    <div style="font-size:2rem;margin-bottom:.6rem">🧾</div>
+    <h3 style="margin:0 0 .4rem;font-size:1rem">Albarán franquicias</h3>
+    <p style="color:var(--tinta-500);font-size:.85rem;margin:0 0 1.1rem;flex:1">Genera e imprime los albaranes de envío a franquicias.</p>
+    <a href="/franquicias/albaranes" class="btn btn-primary btn-full">Abrir albaranes</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

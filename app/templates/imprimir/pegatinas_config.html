@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block titulo %}Configurar pegatinas — Obrador Demo{% endblock %}
+{% block topbar %}Impresión{% endblock %}
+
+{% block contenido %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+  <h1 class="pagina-titulo" style="margin:0">Configuración de pegatinas</h1>
+  <a href="/imprimir/" class="btn" style="background:#eee">← Volver</a>
+</div>
+
+<form method="post" action="/imprimir/pegatinas/config">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+
+    <!-- Diseño -->
+    <div class="card" style="padding:1.2rem">
+      <h3 style="margin:0 0 1rem;font-size:.95rem;color:#555;text-transform:uppercase;letter-spacing:.05em">Diseño</h3>
+      <div class="form-group">
+        <label style="font-weight:600">Pegatinas por página (A4)</label>
+        <div style="display:flex;gap:1.5rem;margin-top:.5rem">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+            <input type="radio" name="por_pagina" value="8" {% if cfg.por_pagina == 8 %}checked{% endif %}>
+            <span><strong>8</strong> por página <small style="color:#888">(2×4, más pequeñas)</small></span>
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer">
+            <input type="radio" name="por_pagina" value="4" {% if cfg.por_pagina == 4 %}checked{% endif %}>
+            <span><strong>4</strong> por página <small style="color:#888">(2×2, más grandes)</small></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campos visibles -->
+    <div class="card" style="padding:1.2rem">
+      <h3 style="margin:0 0 1rem;font-size:.95rem;color:#555;text-transform:uppercase;letter-spacing:.05em">Campos visibles</h3>
+      {% set campos = [
+        ('mostrar_codigo', 'Código'),
+        ('mostrar_fecha_entrega', 'Fecha de entrega'),
+        ('mostrar_fecha_horneado', 'Fecha de horneado'),
+        ('mostrar_fecha_caducidad', 'Fecha de caducidad'),
+        ('mostrar_formato', 'Formato (tamaño)'),
+        ('mostrar_registro_sanitario', 'Registro sanitario'),
+      ] %}
+      {% for campo, etiqueta in campos %}
+      <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;cursor:pointer">
+        <input type="checkbox" name="{{ campo }}" {% if cfg[campo] %}checked{% endif %} style="width:16px;height:16px">
+        {{ etiqueta }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <!-- Textos de campos -->
+    <div class="card" style="padding:1.2rem;grid-column:1/-1">
+      <h3 style="margin:0 0 1rem;font-size:.95rem;color:#555;text-transform:uppercase;letter-spacing:.05em">Textos de los campos</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">
+        {% set labels = [
+          ('label_codigo', 'Etiqueta Código'),
+          ('label_fecha_entrega', 'Etiqueta Fecha entrega'),
+          ('label_fecha_horneado', 'Etiqueta Fecha horneado'),
+          ('label_fecha_caducidad', 'Etiqueta Fecha caducidad'),
+          ('label_formato', 'Etiqueta Formato'),
+          ('label_registro_sanitario', 'Etiqueta Registro sanitario'),
+        ] %}
+        {% for campo, etiqueta in labels %}
+        <div class="form-group" style="margin:0">
+          <label style="font-size:.85rem;color:#666">{{ etiqueta }}</label>
+          <input type="text" name="{{ campo }}" value="{{ cfg[campo] }}" style="margin-top:.3rem">
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display:flex;gap:.8rem;margin-top:1rem">
+    <button type="submit" class="btn btn-primary">Guardar configuración</button>
+    <a href="/imprimir/pegatinas/dia" class="btn" style="background:#eee" target="_blank">Vista previa (mañana)</a>
+  </div>
+</form>
+{% endblock %}
